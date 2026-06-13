@@ -24,6 +24,8 @@ window.STELLAR_I18N = {
     loadError: "轨迹数据加载失败。请通过本地静态服务器打开本项目。",
     play: "播放",
     pause: "暂停",
+    realTimeMode: "按物理时间",
+    metallicity: "金属丰度",
     stages: {
       pms: {
         name: "主序前",
@@ -67,7 +69,11 @@ window.STELLAR_I18N = {
       },
       carbon_burning: {
         name: "碳燃烧前后",
-        description: "大质量恒星进入高级燃烧阶段，模型终点接近核心坍缩前的演化。"
+        description: "大质量恒星进入高级燃烧阶段，模型终点接近核心坍缩前的演化。此后恒星将经历铁核坍缩，引发 II 型超新星爆发，残骸可能形成中子星或黑洞。"
+      },
+      wolf_rayet: {
+        name: "沃尔夫-拉叶星",
+        description: "强恒星风剥离了大部分氢包层，暴露出高温致密核心。光谱以宽发射线为特征，表面温度极高（>25000 K），质量损失率可达每年 10⁻⁵ M☉。最终将以超新星或超亮超新星结束生命。"
       }
     }
   },
@@ -96,6 +102,8 @@ window.STELLAR_I18N = {
     loadError: "Could not load track data. Open the project through a local static server.",
     play: "Play",
     pause: "Pause",
+    realTimeMode: "Physical time",
+    metallicity: "Metallicity",
     stages: {
       pms: {
         name: "Pre-main sequence",
@@ -139,7 +147,11 @@ window.STELLAR_I18N = {
       },
       carbon_burning: {
         name: "Carbon-burning stage",
-        description: "A massive star reaches advanced burning stages; the model endpoint approaches pre-collapse evolution."
+        description: "A massive star reaches advanced burning stages; the model endpoint approaches pre-collapse evolution. The star will undergo iron-core collapse, triggering a Type II supernova. The remnant may become a neutron star or black hole."
+      },
+      wolf_rayet: {
+        name: "Wolf-Rayet star",
+        description: "Intense stellar winds have stripped most of the hydrogen envelope, exposing the hot dense core. Surface temperatures exceed 25,000 K with mass-loss rates up to 10⁻⁵ M☉/yr. The star will end as a supernova or hypernova."
       }
     }
   }

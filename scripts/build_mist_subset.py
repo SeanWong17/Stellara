@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Build a compact browser-ready subset from MIST v2.5 EEP tracks.
+"""Build compact browser-ready subsets from MIST v2.5 EEP tracks.
 
-The script uses only Python's standard library. It can either read a local
-MIST .txz archive or download the default solar-metallicity, non-rotating EEP
-archive from the official MIST site.
+Supports multiple metallicities and outputs columnar JSON for smaller file size.
+The script uses only Python's standard library.
 """
 
 from __future__ import annotations
@@ -17,10 +16,7 @@ import urllib.request
 from pathlib import Path
 
 
-DEFAULT_URL = (
-    "https://mist.science/data/tarballs_v2.5/eeps/"
-    "MIST_v2.5_feh_p000_afe_p0_vvcrit0.0_EEPS.txz"
-)
+BASE_URL = "https://mist.science/data/tarballs_v2.5/eeps/"
 DEFAULT_MASSES = [0.5, 1, 2, 5, 10, 20, 40]
 KEEP_COLUMNS = [
     "star_age",
@@ -34,9 +30,35 @@ KEEP_COLUMNS = [
     "phase",
 ]
 
+FEH_CONFIGS = {
+    "0.00": {"slug": "feh_p000", "url_part": "feh_p000", "dir_part": "feh_p000_afe_p0_vvcrit0.0"},
+    "-1.00": {"slug": "feh_m100", "url_part": "feh_m100", "dir_part": "feh_m100_afe_p0_vvcrit0.0"},
+    "+0.25": {"slug": "feh_p025", "url_part": "feh_p025", "dir_part": "feh_p025_afe_p0_vvcrit0.0"},
+    "+0.50": {"slug": "feh_p050", "url_part": "feh_p050", "dir_part": "feh_p050_afe_p0_vvcrit0.0"},
+}
 
-def mass_to_file(mass: float) -> str:
-    return f"feh_p000_afe_p0_vvcrit0.0/eeps/{int(round(mass * 100)):05d}M.track.eep"
+
+def feh_to_config(feh_str: str) -> dict:
+    normalized = feh_str.lstrip("+")
+    if normalized.startswith("-"):
+        key = normalized
+    else:
+        key = f"+{normalized}" if not normalized.startswith("0") else normalized
+    for k, v in FEH_CONFIGS.items():
+        if k == feh_str or k.lstrip("+") == normalized or k == key:
+            return v
+    sign = "m" if float(feh_str) < 0 else "p"
+    val = f"{abs(float(feh_str)):.2f}".replace(".", "")
+    slug = f"feh_{sign}{val}"
+    return {"slug": slug, "url_part": slug, "dir_part": f"{slug}_afe_p0_vvcrit0.0"}
+
+
+def archive_url(config: dict) -> str:
+    return f"{BASE_URL}MIST_v2.5_{config['url_part']}_afe_p0_vvcrit0.0_EEPS.txz"
+
+
+def mass_to_file(mass: float, config: dict) -> str:
+    return f"{config['dir_part']}/eeps/{int(round(mass * 100)):05d}M.track.eep"
 
 
 def download_archive(url: str, path: Path) -> None:
@@ -88,36 +110,29 @@ def parse_metadata(lines: list[str]) -> tuple[float, int, int, str, list[int], l
     return initial_mass, n_pts, n_eep, track_type, primary_eeps, columns, data_start
 
 
-def stage_for_eep(eep: int, primary_eeps: list[int], track_type: str) -> str:
+def stage_for_eep(eep: int, primary_eeps: list[int], track_type: str, mass: float = 0, initial_mass: float = 0, log_teff: float = 0) -> str:
     low_mass_labels = [
-        "pms",
-        "main_sequence",
-        "main_sequence",
-        "subgiant_red_giant",
-        "red_giant_tip",
-        "core_helium_burning",
-        "core_helium_burning",
-        "tp_agb",
-        "post_agb",
-        "white_dwarf",
+        "pms", "main_sequence", "main_sequence", "subgiant_red_giant",
+        "red_giant_tip", "core_helium_burning", "core_helium_burning",
+        "tp_agb", "post_agb", "white_dwarf",
     ]
     high_mass_labels = [
-        "pms",
-        "main_sequence",
-        "main_sequence",
-        "post_main_sequence",
-        "red_supergiant",
-        "core_helium_burning",
-        "core_helium_burning",
+        "pms", "main_sequence", "main_sequence", "post_main_sequence",
+        "red_supergiant", "core_helium_burning", "core_helium_burning",
         "carbon_burning",
     ]
     labels = high_mass_labels if track_type == "high-mass" else low_mass_labels
-
     segment = 0
     for idx, marker in enumerate(primary_eeps):
         if eep >= marker:
             segment = idx
-    return labels[min(segment, len(labels) - 1)]
+    base_stage = labels[min(segment, len(labels) - 1)]
+
+    if track_type == "high-mass" and base_stage in ("core_helium_burning", "carbon_burning"):
+        if initial_mass > 0 and mass < initial_mass * 0.6 and log_teff > 4.0:
+            return "wolf_rayet"
+
+    return base_stage
 
 
 def parse_track(text: str, target_points: int) -> dict:
@@ -136,19 +151,21 @@ def parse_track(text: str, target_points: int) -> dict:
         if len(parts) < len(columns):
             continue
         eep = len(raw_points) + 1
-        point = {
-            "eep": eep,
-            "age_yr": finite_float(parts[col_index["star_age"]]),
-            "mass": finite_float(parts[col_index["star_mass"]]),
-            "log_L": finite_float(parts[col_index["log_L"]]),
-            "log_Teff": finite_float(parts[col_index["log_Teff"]]),
-            "log_R": finite_float(parts[col_index["log_R"]]),
-            "log_g": finite_float(parts[col_index["log_g"]]),
-            "center_h1": finite_float(parts[col_index["center_h1"]]),
-            "center_he4": finite_float(parts[col_index["center_he4"]]),
-            "mist_phase": int(float(parts[col_index["phase"]])),
-            "stage": stage_for_eep(eep, primary_eeps, track_type),
-        }
+        cur_mass = finite_float(parts[col_index["star_mass"]])
+        cur_log_teff = finite_float(parts[col_index["log_Teff"]])
+        point = [
+            eep,
+            finite_float(parts[col_index["star_age"]]),
+            cur_mass,
+            finite_float(parts[col_index["log_L"]]),
+            cur_log_teff,
+            finite_float(parts[col_index["log_R"]]),
+            finite_float(parts[col_index["log_g"]]),
+            finite_float(parts[col_index["center_h1"]]),
+            finite_float(parts[col_index["center_he4"]]),
+            int(float(parts[col_index["phase"]])),
+            stage_for_eep(eep, primary_eeps, track_type, cur_mass, initial_mass, cur_log_teff),
+        ]
         raw_points.append(point)
 
     if len(raw_points) != n_pts:
@@ -164,7 +181,8 @@ def parse_track(text: str, target_points: int) -> dict:
         "track_type": track_type,
         "n_eep": n_eep,
         "primary_eeps": primary_eeps,
-        "points": points,
+        "columns": ["eep", "age_yr", "mass", "log_L", "log_Teff", "log_R", "log_g", "center_h1", "center_he4", "mist_phase", "stage"],
+        "data": points,
     }
 
 
@@ -172,7 +190,7 @@ def finite_float(value: str) -> float:
     out = float(value)
     if not math.isfinite(out):
         raise ValueError(f"Non-finite value: {value}")
-    return out
+    return round(out, 6)
 
 
 def downsample_indices(length: int, target_points: int) -> list[int]:
@@ -190,24 +208,29 @@ def write_json(path: Path, data: object) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--archive", type=Path, default=Path("/tmp/MIST_v2.5_feh_p000_afe_p0_vvcrit0.0_EEPS.txz"))
-    parser.add_argument("--download", action="store_true", help="Download the default archive if --archive is missing")
-    parser.add_argument("--url", default=DEFAULT_URL)
+    parser.add_argument("--feh", default="0.00", help="Metallicity [Fe/H] value, e.g. 0.00, -1.00, +0.30")
+    parser.add_argument("--archive", type=Path, default=None, help="Path to local .txz archive (auto-determined if omitted)")
+    parser.add_argument("--download", action="store_true", help="Download archive if missing")
     parser.add_argument("--output", type=Path, default=Path("data"))
     parser.add_argument("--points", type=int, default=360)
     parser.add_argument("--masses", nargs="*", type=float, default=DEFAULT_MASSES)
     args = parser.parse_args()
 
-    if not args.archive.exists():
+    config = feh_to_config(args.feh)
+    url = archive_url(config)
+    archive_path = args.archive or Path(f"/tmp/MIST_v2.5_{config['url_part']}_afe_p0_vvcrit0.0_EEPS.txz")
+
+    if not archive_path.exists():
         if not args.download:
-            raise SystemExit(f"Archive not found: {args.archive}. Pass --download to fetch it.")
-        download_archive(args.url, args.archive)
+            raise SystemExit(f"Archive not found: {archive_path}. Pass --download to fetch it.")
+        download_archive(url, archive_path)
 
     tracks = []
-    with tarfile.open(args.archive, mode="r:xz") as tar:
+    out_dir = args.output / "tracks" / config["slug"]
+    with tarfile.open(archive_path, mode="r:xz") as tar:
         members = {member.name: member for member in tar.getmembers()}
         for mass in args.masses:
-            member_name = mass_to_file(mass)
+            member_name = mass_to_file(mass, config)
             member = members.get(member_name)
             if member is None:
                 raise SystemExit(f"Track not found in archive: {member_name}")
@@ -218,28 +241,26 @@ def main() -> None:
             slug = f"{int(round(mass * 100)):05d}M"
             track["slug"] = slug
             track["source_file"] = member_name
-            write_json(args.output / "tracks" / f"{slug}.json", track)
-            tracks.append(
-                {
-                    "slug": slug,
-                    "initial_mass": track["initial_mass"],
-                    "track_type": track["track_type"],
-                    "points": len(track["points"]),
-                    "source_file": member_name,
-                }
-            )
+            write_json(out_dir / f"{slug}.json", track)
+            tracks.append({
+                "slug": slug,
+                "initial_mass": track["initial_mass"],
+                "track_type": track["track_type"],
+                "points": len(track["data"]),
+                "source_file": member_name,
+            })
 
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "dataset": "MIST v2.5 EEP tracks",
-        "metallicity": "[Fe/H]=0.00, [a/Fe]=0.00",
+        "metallicity": f"[Fe/H]={args.feh}",
         "rotation": "v/vcrit=0.00",
-        "source_url": args.url,
-        "generated_from": str(args.archive),
+        "source_url": url,
+        "generated_from": str(archive_path),
         "tracks": tracks,
     }
-    write_json(args.output / "tracks_manifest.json", manifest)
-    print(f"Wrote {len(tracks)} tracks to {args.output}")
+    write_json(out_dir / "manifest.json", manifest)
+    print(f"Wrote {len(tracks)} tracks to {out_dir}")
 
 
 if __name__ == "__main__":

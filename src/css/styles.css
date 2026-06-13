@@ -224,79 +224,65 @@ input {
   accent-color: var(--accent-2);
 }
 
-#hrChart {
-  display: block;
+.hr-chart-container {
+  position: relative;
   width: 100%;
   height: calc(100vh - 212px);
   min-height: 640px;
   border: 1px solid #282d29;
   border-radius: 8px;
   background: linear-gradient(180deg, #111412 0%, #111412 72%, #151715 100%);
+  overflow: hidden;
+  touch-action: none;
 }
 
-.axis text {
-  fill: var(--muted);
-  font-size: 12px;
+.hr-tooltip {
+  position: absolute;
+  padding: 8px 10px;
+  background: rgba(32, 35, 33, 0.95);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.82rem;
+  pointer-events: none;
+  z-index: 10;
+  line-height: 1.5;
+  white-space: nowrap;
 }
 
-.axis line,
-.axis path {
-  stroke: #5a6259;
+.hr-tooltip.hidden {
+  display: none;
 }
 
-.axis {
-  stroke: #5a6259;
-  stroke-width: 1.2;
+.chart-toggles {
+  display: flex;
+  gap: 14px;
+  align-items: center;
 }
 
-.grid-line {
-  stroke: var(--chart-grid);
-  stroke-width: 1;
+.feh-select {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #232724;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
-.spectral-band rect {
-  stroke: rgba(244, 241, 232, 0.1);
-  stroke-width: 1;
+.feh-select:hover {
+  border-color: var(--accent);
 }
 
-.spectral-band text {
-  fill: rgba(244, 241, 232, 0.72);
-  font-size: 12px;
-  font-weight: 750;
+.stage-pill--flash {
+  animation: pill-flash 0.4s ease-out;
 }
 
-.track-line {
-  fill: none;
-  stroke-width: 1.45;
-  opacity: 0.22;
-}
-
-.track-line.active {
-  stroke-width: 2.6;
-  opacity: 1;
-}
-
-.current-point {
-  stroke: #111412;
-  stroke-width: 2.5;
-}
-
-.axis-label {
-  fill: var(--text);
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.reference-point {
-  fill: #f4f1e8;
-  stroke: #111412;
-  stroke-width: 2;
-}
-
-.reference-label {
-  fill: rgba(244, 241, 232, 0.76);
-  font-size: 12px;
-  font-weight: 650;
+@keyframes pill-flash {
+  0% { transform: scale(1.08); filter: brightness(1.4); }
+  100% { transform: scale(1); filter: brightness(1); }
 }
 
 .control-panel {
@@ -397,7 +383,7 @@ input {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  #hrChart {
+  .hr-chart-container {
     height: 620px;
     min-height: 520px;
   }
@@ -447,7 +433,7 @@ input {
     max-width: none;
   }
 
-  #hrChart {
+  .hr-chart-container {
     height: 520px;
     min-height: 520px;
   }

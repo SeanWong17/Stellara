@@ -11,10 +11,15 @@
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow" data-i18n="eyebrow">MIST v2.5 / single-star tracks</p>
+          <p class="eyebrow" data-i18n="eyebrow">MIST v2.5 / 单星轨迹</p>
           <h1 data-i18n="title">恒星演化路径</h1>
         </div>
         <div class="topbar-actions">
+          <select class="feh-select" id="fehSelect">
+            <option value="feh_p000">[Fe/H] = 0.00</option>
+            <option value="feh_m100">[Fe/H] = −1.00</option>
+            <option value="feh_p025">[Fe/H] = +0.25</option>
+          </select>
           <button class="icon-button" id="langToggle" type="button" aria-label="Switch language">EN</button>
           <a class="source-link" href="docs/data-notes.md" data-i18n="dataNotes">数据说明</a>
         </div>
@@ -24,21 +29,27 @@
         <section class="panel chart-panel" aria-labelledby="chartTitle">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow" data-i18n="hrDiagram">Hertzsprung-Russell diagram</p>
+              <p class="eyebrow" data-i18n="hrDiagram">赫罗图</p>
               <h2 id="chartTitle" data-i18n="chartTitle">温度与光度轨迹</h2>
             </div>
-            <label class="toggle">
-              <input id="overlayToggle" type="checkbox" checked>
-              <span data-i18n="overlayTracks">叠加全部轨迹</span>
-            </label>
+            <div class="chart-toggles">
+              <label class="toggle">
+                <input id="overlayToggle" type="checkbox" checked>
+                <span data-i18n="overlayTracks">叠加全部轨迹</span>
+              </label>
+              <label class="toggle">
+                <input id="realTimeToggle" type="checkbox">
+                <span data-i18n="realTimeMode">按物理时间</span>
+              </label>
+            </div>
           </div>
-          <svg id="hrChart" role="img" aria-labelledby="chartTitle"></svg>
+          <div class="hr-chart-container" id="hrChartContainer"></div>
         </section>
 
         <aside class="panel control-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow" data-i18n="nowViewing">Now viewing</p>
+              <p class="eyebrow" data-i18n="nowViewing">当前恒星</p>
               <h2 id="starTitle">1.0 M☉</h2>
             </div>
             <span class="stage-pill" id="stagePill">Main sequence</span>
@@ -55,39 +66,21 @@
           </div>
 
           <div>
-            <p class="eyebrow" data-i18n="initialMass">Initial mass</p>
+            <p class="eyebrow" data-i18n="initialMass">初始质量</p>
             <div class="mass-grid" id="massGrid"></div>
           </div>
 
           <div class="metric-grid">
-            <div class="metric">
-              <span data-i18n="age">年龄</span>
-              <strong id="metricAge">-</strong>
-            </div>
-            <div class="metric">
-              <span data-i18n="temperature">有效温度</span>
-              <strong id="metricTemp">-</strong>
-            </div>
-            <div class="metric">
-              <span data-i18n="luminosity">光度</span>
-              <strong id="metricLum">-</strong>
-            </div>
-            <div class="metric">
-              <span data-i18n="radius">半径</span>
-              <strong id="metricRadius">-</strong>
-            </div>
-            <div class="metric">
-              <span data-i18n="surfaceGravity">表面重力</span>
-              <strong id="metricLogG">-</strong>
-            </div>
-            <div class="metric">
-              <span data-i18n="remainingMass">当前质量</span>
-              <strong id="metricMass">-</strong>
-            </div>
+            <div class="metric"><span data-i18n="age">年龄</span><strong id="metricAge">-</strong></div>
+            <div class="metric"><span data-i18n="temperature">有效温度</span><strong id="metricTemp">-</strong></div>
+            <div class="metric"><span data-i18n="luminosity">光度</span><strong id="metricLum">-</strong></div>
+            <div class="metric"><span data-i18n="radius">半径</span><strong id="metricRadius">-</strong></div>
+            <div class="metric"><span data-i18n="surfaceGravity">表面重力</span><strong id="metricLogG">-</strong></div>
+            <div class="metric"><span data-i18n="remainingMass">当前质量</span><strong id="metricMass">-</strong></div>
           </div>
 
           <div class="stage-copy">
-            <p class="eyebrow" data-i18n="stage">Stage</p>
+            <p class="eyebrow" data-i18n="stage">演化阶段</p>
             <h3 id="stageName">-</h3>
             <p id="stageDescription">-</p>
           </div>
@@ -103,6 +96,6 @@
 
     <div class="loading" id="loading">Loading MIST tracks...</div>
     <script src="src/js/i18n.js"></script>
-    <script src="src/js/app.js"></script>
+    <script type="module" src="src/js/app.js"></script>
   </body>
 </html>

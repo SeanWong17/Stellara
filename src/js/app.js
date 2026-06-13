@@ -1,17 +1,10 @@
-const state = {
-  lang: localStorage.getItem("stellar-lang") || "zh",
-  manifest: null,
-  tracks: [],
-  activeSlug: null,
-  progress: 0,
-  playing: false,
-  raf: null,
-  lastFrame: 0,
-  chart: null
-};
+import { state, activeTrack, currentPoint, computeAxisRange, t, COLORS } from "./state.js";
+import { formatAge, formatNumber, formatMass, deserializeTrack } from "./utils.js";
+import { initStarCanvas, resizeCanvas, drawStar, triggerFlash } from "./star-renderer.js";
+import { initHRChart, resize as resizeHR, drawStatic, drawDynamic } from "./hr-chart.js";
+import { togglePlayback, setTickCallback } from "./animation.js";
 
 const el = {};
-const colors = ["#f5b84b", "#77c7b8", "#e36c64", "#a6a1ff", "#8fd16f", "#f08bc3", "#70a7ff"];
 
 document.addEventListener("DOMContentLoaded", init);
 
@@ -19,20 +12,23 @@ async function init() {
   cacheElements();
   applyLanguage();
   bindEvents();
-  resizeCanvas();
-  window.addEventListener("resize", () => {
-    resizeCanvas();
-    drawStar();
-    drawChart();
-  });
+  initStarCanvas(el.starCanvas);
+  initHRChart(el.hrChartContainer);
+  setTickCallback(render);
 
   try {
-    state.manifest = await fetchJson("data/tracks_manifest.json");
+    const manifest = await fetchJson(`data/tracks/${state.metallicity}/manifest.json`);
+    state.manifest = manifest;
     state.tracks = await Promise.all(
-      state.manifest.tracks.map((item) => fetchJson(`data/tracks/${item.slug}.json`))
+      manifest.tracks.map((item) =>
+        fetchJson(`data/tracks/${state.metallicity}/${item.slug}.json`).then(deserializeTrack)
+      )
     );
-    state.activeSlug = state.tracks.find((track) => Math.abs(track.initial_mass - 1) < 0.01)?.slug || state.tracks[0].slug;
+    state.activeSlug = state.tracks.find((t) => Math.abs(t.initial_mass - 1) < 0.01)?.slug || state.tracks[0].slug;
+    computeAxisRange(state.tracks);
     buildMassButtons();
+    state.overlayAll = el.overlayToggle.checked;
+    drawStatic();
     setLoading(false);
     render();
   } catch (error) {
@@ -54,14 +50,16 @@ function cacheElements() {
     ageLabel: document.getElementById("ageLabel"),
     playButton: document.getElementById("playButton"),
     overlayToggle: document.getElementById("overlayToggle"),
+    realTimeToggle: document.getElementById("realTimeToggle"),
     massGrid: document.getElementById("massGrid"),
-    hrChart: document.getElementById("hrChart"),
+    hrChartContainer: document.getElementById("hrChartContainer"),
     metricAge: document.getElementById("metricAge"),
     metricTemp: document.getElementById("metricTemp"),
     metricLum: document.getElementById("metricLum"),
     metricRadius: document.getElementById("metricRadius"),
     metricLogG: document.getElementById("metricLogG"),
-    metricMass: document.getElementById("metricMass")
+    metricMass: document.getElementById("metricMass"),
+    fehSelect: document.getElementById("fehSelect")
   });
 }
 
@@ -70,6 +68,7 @@ function bindEvents() {
     state.lang = state.lang === "zh" ? "en" : "zh";
     localStorage.setItem("stellar-lang", state.lang);
     applyLanguage();
+    drawStatic();
     render();
   });
 
@@ -79,13 +78,49 @@ function bindEvents() {
   });
 
   el.playButton.addEventListener("click", () => {
-    state.playing = !state.playing;
-    state.lastFrame = performance.now();
+    togglePlayback();
     updatePlayButton();
-    if (state.playing) tick(state.lastFrame);
   });
 
-  el.overlayToggle.addEventListener("change", drawChart);
+  el.overlayToggle.addEventListener("change", () => {
+    state.overlayAll = el.overlayToggle.checked;
+    drawStatic();
+    drawDynamic();
+  });
+
+  el.realTimeToggle.addEventListener("change", () => {
+    state.realTimeMode = el.realTimeToggle.checked;
+  });
+
+  el.fehSelect.addEventListener("change", async () => {
+    state.metallicity = el.fehSelect.value;
+    setLoading(true);
+    try {
+      const manifest = await fetchJson(`data/tracks/${state.metallicity}/manifest.json`);
+      state.manifest = manifest;
+      state.tracks = await Promise.all(
+        manifest.tracks.map((item) =>
+          fetchJson(`data/tracks/${state.metallicity}/${item.slug}.json`).then(deserializeTrack)
+        )
+      );
+      state.activeSlug = state.tracks.find((t) => Math.abs(t.initial_mass - 1) < 0.01)?.slug || state.tracks[0].slug;
+      state.progress = 0;
+      computeAxisRange(state.tracks);
+      buildMassButtons();
+      drawStatic();
+      render();
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  });
+
+  window.addEventListener("resize", () => {
+    resizeCanvas();
+    resizeHR();
+    drawStatic();
+    render();
+  });
 }
 
 function applyLanguage() {
@@ -98,8 +133,67 @@ function applyLanguage() {
   updatePlayButton();
 }
 
-function t(key) {
-  return key.split(".").reduce((obj, part) => obj?.[part], window.STELLAR_I18N[state.lang]) || key;
+function render() {
+  if (!state.tracks.length) return;
+  const track = activeTrack();
+  const point = currentPoint(track);
+  if (!point) return;
+
+  const stageData = window.STELLAR_I18N[state.lang].stages[point.stage] || window.STELLAR_I18N[state.lang].stages.main_sequence;
+
+  if (state.prevStage && point.stage !== state.prevStage) {
+    state.stageJustChanged = true;
+    el.stagePill.classList.remove("stage-pill--flash");
+    void el.stagePill.offsetWidth;
+    el.stagePill.classList.add("stage-pill--flash");
+    triggerFlash();
+  }
+  state.prevStage = point.stage;
+
+  el.timeSlider.value = Math.round(state.progress * 1000);
+  el.starTitle.textContent = `${formatMass(track.initial_mass)} M☉`;
+  el.stagePill.textContent = stageData.name;
+  el.stageName.textContent = stageData.name;
+  el.stageDescription.textContent = stageData.description;
+  el.ageLabel.textContent = formatAge(point.age_yr, state.lang);
+  el.metricAge.textContent = formatAge(point.age_yr, state.lang);
+  el.metricTemp.textContent = `${formatNumber(Math.pow(10, point.log_Teff), 0, state.lang)} K`;
+  el.metricLum.textContent = `${formatNumber(Math.pow(10, point.log_L), 2, state.lang)} L☉`;
+  el.metricRadius.textContent = `${formatNumber(Math.pow(10, point.log_R), 2, state.lang)} R☉`;
+  el.metricLogG.textContent = point.log_g.toFixed(2);
+  el.metricMass.textContent = `${formatNumber(point.mass, 2, state.lang)} M☉`;
+
+  document.querySelectorAll(".mass-button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.slug === state.activeSlug);
+  });
+
+  drawStar(point, track.track_type);
+  drawDynamic();
+  updatePlayButton();
+}
+
+function buildMassButtons() {
+  el.massGrid.innerHTML = "";
+  state.tracks.forEach((track, index) => {
+    const button = document.createElement("button");
+    button.className = "mass-button";
+    button.type = "button";
+    button.dataset.slug = track.slug;
+    button.textContent = `${formatMass(track.initial_mass)} M☉`;
+    button.addEventListener("click", () => {
+      state.activeSlug = track.slug;
+      state.progress = Math.min(state.progress, 0.995);
+      drawStatic();
+      render();
+    });
+    el.massGrid.appendChild(button);
+  });
+}
+
+function updatePlayButton() {
+  if (!el.playButton) return;
+  el.playButton.textContent = state.playing ? "Ⅱ" : "▶";
+  el.playButton.setAttribute("aria-label", state.playing ? t("pause") : t("play"));
 }
 
 function setLoading(show) {
@@ -110,385 +204,4 @@ async function fetchJson(url) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`${url}: ${response.status}`);
   return response.json();
-}
-
-function buildMassButtons() {
-  el.massGrid.innerHTML = "";
-  state.tracks.forEach((track, index) => {
-    const button = document.createElement("button");
-    button.className = "mass-button";
-    button.type = "button";
-    button.dataset.slug = track.slug;
-    button.style.setProperty("--mass-color", colors[index % colors.length]);
-    button.textContent = `${formatMass(track.initial_mass)} M☉`;
-    button.addEventListener("click", () => {
-      state.activeSlug = track.slug;
-      state.progress = Math.min(state.progress, 0.995);
-      render();
-    });
-    el.massGrid.appendChild(button);
-  });
-}
-
-function activeTrack() {
-  return state.tracks.find((track) => track.slug === state.activeSlug) || state.tracks[0];
-}
-
-function currentPoint(track = activeTrack()) {
-  const points = track.points;
-  if (!points.length) return null;
-  const exact = state.progress * (points.length - 1);
-  const left = Math.floor(exact);
-  const right = Math.min(points.length - 1, left + 1);
-  const mix = exact - left;
-  return interpolatePoint(points[left], points[right], mix);
-}
-
-function interpolatePoint(a, b, mix) {
-  const out = { stage: mix < 0.5 ? a.stage : b.stage, mist_phase: mix < 0.5 ? a.mist_phase : b.mist_phase };
-  for (const key of ["eep", "age_yr", "mass", "log_L", "log_Teff", "log_R", "log_g", "center_h1", "center_he4"]) {
-    out[key] = a[key] + (b[key] - a[key]) * mix;
-  }
-  return out;
-}
-
-function render() {
-  if (!state.tracks.length) return;
-  const track = activeTrack();
-  const point = currentPoint(track);
-  const stage = window.STELLAR_I18N[state.lang].stages[point.stage] || window.STELLAR_I18N[state.lang].stages.main_sequence;
-
-  el.timeSlider.value = Math.round(state.progress * 1000);
-  el.starTitle.textContent = `${formatMass(track.initial_mass)} M☉`;
-  el.stagePill.textContent = stage.name;
-  el.stageName.textContent = stage.name;
-  el.stageDescription.textContent = stage.description;
-  el.ageLabel.textContent = formatAge(point.age_yr);
-  el.metricAge.textContent = formatAge(point.age_yr);
-  el.metricTemp.textContent = `${formatNumber(Math.pow(10, point.log_Teff), 0)} K`;
-  el.metricLum.textContent = `${formatNumber(Math.pow(10, point.log_L), 2)} L☉`;
-  el.metricRadius.textContent = `${formatNumber(Math.pow(10, point.log_R), 2)} R☉`;
-  el.metricLogG.textContent = point.log_g.toFixed(2);
-  el.metricMass.textContent = `${formatNumber(point.mass, 2)} M☉`;
-
-  document.querySelectorAll(".mass-button").forEach((button) => {
-    button.classList.toggle("active", button.dataset.slug === state.activeSlug);
-  });
-
-  drawStar();
-  drawChart();
-}
-
-function updatePlayButton() {
-  if (!el.playButton) return;
-  el.playButton.textContent = state.playing ? "Ⅱ" : "▶";
-  el.playButton.setAttribute("aria-label", state.playing ? t("pause") : t("play"));
-}
-
-function tick(now) {
-  if (!state.playing) return;
-  const dt = Math.min(0.05, (now - state.lastFrame) / 1000);
-  state.lastFrame = now;
-  state.progress += dt * 0.055;
-  if (state.progress >= 1) state.progress = 0;
-  render();
-  state.raf = requestAnimationFrame(tick);
-}
-
-function resizeCanvas() {
-  const rect = el.starCanvas.getBoundingClientRect();
-  const ratio = Math.min(window.devicePixelRatio || 1, 2);
-  el.starCanvas.width = Math.max(1, Math.floor(rect.width * ratio));
-  el.starCanvas.height = Math.max(1, Math.floor(rect.height * ratio));
-}
-
-function drawStar() {
-  const point = currentPoint();
-  if (!point) return;
-  const canvas = el.starCanvas;
-  const ctx = canvas.getContext("2d");
-  const width = canvas.width;
-  const height = canvas.height;
-  const ratio = width / Math.max(1, canvas.getBoundingClientRect().width);
-  const cx = width / 2;
-  const cy = height / 2;
-  const radiusSolar = Math.pow(10, point.log_R);
-  const temp = Math.pow(10, point.log_Teff);
-  const lum = Math.pow(10, point.log_L);
-  const visualRadius = clamp(30 * ratio + Math.log10(radiusSolar + 1) * 78 * ratio, 22 * ratio, Math.min(width, height) * 0.37);
-  const glow = clamp(visualRadius * (1.2 + Math.log10(lum + 1) * 0.22), visualRadius * 1.3, Math.min(width, height) * 0.7);
-  const color = temperatureColor(temp);
-
-  ctx.clearRect(0, 0, width, height);
-  drawStarscape(ctx, width, height, point.age_yr);
-
-  const outer = ctx.createRadialGradient(cx, cy, visualRadius * 0.2, cx, cy, glow);
-  outer.addColorStop(0, withAlpha(color, 0.55));
-  outer.addColorStop(0.42, withAlpha(color, 0.16));
-  outer.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = outer;
-  ctx.beginPath();
-  ctx.arc(cx, cy, glow, 0, Math.PI * 2);
-  ctx.fill();
-
-  const body = ctx.createRadialGradient(cx - visualRadius * 0.32, cy - visualRadius * 0.34, 0, cx, cy, visualRadius);
-  body.addColorStop(0, "#fffaf0");
-  body.addColorStop(0.24, lighten(color, 0.35));
-  body.addColorStop(0.76, color);
-  body.addColorStop(1, darken(color, 0.38));
-  ctx.fillStyle = body;
-  ctx.beginPath();
-  ctx.arc(cx, cy, visualRadius, 0, Math.PI * 2);
-  ctx.fill();
-
-  drawSurfaceBands(ctx, cx, cy, visualRadius, color, point);
-  drawScale(ctx, width, height, radiusSolar, ratio);
-}
-
-function drawStarscape(ctx, width, height, seed) {
-  ctx.fillStyle = "#0e1110";
-  ctx.fillRect(0, 0, width, height);
-  const count = Math.round((width * height) / 18000);
-  for (let i = 0; i < count; i++) {
-    const x = pseudoRandom(seed + i * 17) * width;
-    const y = pseudoRandom(seed + i * 31) * height;
-    const alpha = 0.22 + pseudoRandom(seed + i * 53) * 0.55;
-    ctx.fillStyle = `rgba(244,241,232,${alpha})`;
-    ctx.fillRect(x, y, 1.2, 1.2);
-  }
-}
-
-function drawSurfaceBands(ctx, cx, cy, radius, color, point) {
-  const bandCount = point.stage === "main_sequence" ? 4 : 8;
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius * 0.99, 0, Math.PI * 2);
-  ctx.clip();
-  for (let i = 0; i < bandCount; i++) {
-    const y = cy - radius + (i + 0.5) * (radius * 2 / bandCount);
-    const width = Math.sqrt(Math.max(0, radius * radius - (y - cy) * (y - cy))) * 2;
-    ctx.strokeStyle = withAlpha(i % 2 ? lighten(color, 0.18) : darken(color, 0.18), 0.18);
-    ctx.lineWidth = radius * 0.06;
-    ctx.beginPath();
-    ctx.moveTo(cx - width / 2, y);
-    ctx.bezierCurveTo(cx - width * 0.2, y - radius * 0.05, cx + width * 0.2, y + radius * 0.05, cx + width / 2, y);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function drawScale(ctx, width, height, radiusSolar, ratio) {
-  ctx.fillStyle = "rgba(244,241,232,0.78)";
-  ctx.font = `${13 * ratio}px Inter, sans-serif`;
-  ctx.textAlign = "left";
-  ctx.fillText(`${formatNumber(radiusSolar, 2)} R☉`, 18 * ratio, height - 24 * ratio);
-}
-
-function drawChart() {
-  const svg = el.hrChart;
-  if (!state.tracks.length || !svg.clientWidth) return;
-  const width = svg.clientWidth;
-  const height = svg.clientHeight;
-  const margin = { top: 48, right: 28, bottom: 62, left: 68 };
-  const innerW = width - margin.left - margin.right;
-  const innerH = height - margin.top - margin.bottom;
-  const allPoints = state.tracks.flatMap((track) => track.points);
-  const xMin = Math.min(3.42, Math.min(...allPoints.map((p) => p.log_Teff)) - 0.03);
-  const xMax = Math.max(4.78, Math.max(...allPoints.map((p) => p.log_Teff)) + 0.03);
-  const yMin = Math.min(-4.2, Math.min(...allPoints.map((p) => p.log_L)) - 0.2);
-  const yMax = Math.max(6.2, Math.max(...allPoints.map((p) => p.log_L)) + 0.2);
-  const x = (v) => margin.left + (xMax - v) / (xMax - xMin) * innerW;
-  const y = (v) => margin.top + (yMax - v) / (yMax - yMin) * innerH;
-  const showAll = el.overlayToggle.checked;
-  const active = activeTrack();
-  const point = currentPoint(active);
-
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  svg.innerHTML = "";
-  drawSpectralBand(svg, x, margin, width);
-
-  const tempTicks = [50000, 30000, 10000, 7500, 6000, 5000, 4000, 3000];
-  const visibleTempTicks = tempTicks
-    .map((temp) => ({ temp, log: Math.log10(temp) }))
-    .filter((tick) => tick.log >= xMin && tick.log <= xMax);
-  const yTicks = integerTicks(Math.ceil(yMin), Math.floor(yMax), 1);
-  for (const tick of visibleTempTicks) {
-    appendLine(svg, x(tick.log), margin.top, x(tick.log), height - margin.bottom, "grid-line");
-    appendText(svg, x(tick.log), height - 31, formatTemperatureTick(tick.temp), "axis text", "middle");
-  }
-  for (const tick of yTicks) {
-    appendLine(svg, margin.left, y(tick), width - margin.right, y(tick), "grid-line");
-    appendText(svg, margin.left - 10, y(tick) + 4, tick.toFixed(0), "axis text", "end");
-  }
-
-  appendLine(svg, margin.left, height - margin.bottom, width - margin.right, height - margin.bottom, "axis");
-  appendLine(svg, margin.left, margin.top, margin.left, height - margin.bottom, "axis");
-  appendText(svg, margin.left + innerW / 2, height - 10, t("xAxis"), "axis-label", "middle");
-  const yLabel = appendText(svg, 18, margin.top + innerH / 2, t("yAxis"), "axis-label", "middle");
-  yLabel.setAttribute("transform", `rotate(-90 18 ${margin.top + innerH / 2})`);
-  drawReferencePoint(svg, x, y, Math.log10(5772), 0, t("sun"));
-
-  state.tracks.forEach((track, index) => {
-    if (!showAll && track.slug !== active.slug) return;
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", track.points.map((p, i) => `${i ? "L" : "M"}${x(p.log_Teff).toFixed(1)},${y(p.log_L).toFixed(1)}`).join(" "));
-    path.setAttribute("class", `track-line${track.slug === active.slug ? " active" : ""}`);
-    path.setAttribute("stroke", colors[index % colors.length]);
-    svg.appendChild(path);
-  });
-
-  const activeIndex = state.tracks.findIndex((track) => track.slug === active.slug);
-  const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  circle.setAttribute("class", "current-point");
-  circle.setAttribute("cx", x(point.log_Teff));
-  circle.setAttribute("cy", y(point.log_L));
-  circle.setAttribute("r", 7);
-  circle.setAttribute("fill", colors[Math.max(0, activeIndex) % colors.length]);
-  svg.appendChild(circle);
-}
-
-function drawSpectralBand(svg, x, margin, width) {
-  const y = 16;
-  const h = 22;
-  const classes = [
-    { label: "O", hot: 5.0, cool: Math.log10(30000), color: "rgba(112,167,255,0.22)" },
-    { label: "B", hot: Math.log10(30000), cool: Math.log10(10000), color: "rgba(148,178,255,0.18)" },
-    { label: "A", hot: Math.log10(10000), cool: Math.log10(7500), color: "rgba(210,220,255,0.16)" },
-    { label: "F", hot: Math.log10(7500), cool: Math.log10(6000), color: "rgba(245,241,210,0.17)" },
-    { label: "G", hot: Math.log10(6000), cool: Math.log10(5200), color: "rgba(245,184,75,0.18)" },
-    { label: "K", hot: Math.log10(5200), cool: Math.log10(3700), color: "rgba(232,126,84,0.18)" },
-    { label: "M", hot: Math.log10(3700), cool: 3.3, color: "rgba(227,108,100,0.18)" }
-  ];
-  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-  group.setAttribute("class", "spectral-band");
-  svg.appendChild(group);
-  appendText(group, margin.left - 8, y + 15, t("spectralClass"), "axis text", "end");
-  classes.forEach((item) => {
-    const x1 = clamp(x(item.hot), margin.left, width - margin.right);
-    const x2 = clamp(x(item.cool), margin.left, width - margin.right);
-    const rectX = Math.min(x1, x2);
-    const rectW = Math.abs(x2 - x1);
-    if (rectW < 4) return;
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", rectX);
-    rect.setAttribute("y", y);
-    rect.setAttribute("width", rectW);
-    rect.setAttribute("height", h);
-    rect.setAttribute("fill", item.color);
-    group.appendChild(rect);
-    appendText(group, rectX + rectW / 2, y + 15, item.label, "spectral-band text", "middle");
-  });
-}
-
-function drawReferencePoint(svg, x, y, logT, logL, label) {
-  const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-  circle.setAttribute("class", "reference-point");
-  circle.setAttribute("cx", x(logT));
-  circle.setAttribute("cy", y(logL));
-  circle.setAttribute("r", 4.5);
-  svg.appendChild(circle);
-  appendText(svg, x(logT) + 10, y(logL) + 4, label, "reference-label", "start");
-}
-
-function appendLine(svg, x1, y1, x2, y2, className) {
-  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-  line.setAttribute("x1", x1);
-  line.setAttribute("y1", y1);
-  line.setAttribute("x2", x2);
-  line.setAttribute("y2", y2);
-  line.setAttribute("class", className);
-  svg.appendChild(line);
-}
-
-function appendText(svg, x, y, text, className, anchor) {
-  const node = document.createElementNS("http://www.w3.org/2000/svg", "text");
-  node.setAttribute("x", x);
-  node.setAttribute("y", y);
-  node.setAttribute("class", className);
-  node.setAttribute("text-anchor", anchor);
-  node.textContent = text;
-  svg.appendChild(node);
-  return node;
-}
-
-function ticks(min, max, count) {
-  const step = (max - min) / Math.max(1, count - 1);
-  return Array.from({ length: count }, (_, i) => min + step * i);
-}
-
-function integerTicks(min, max, step) {
-  const out = [];
-  for (let value = min; value <= max; value += step) out.push(value);
-  return out;
-}
-
-function formatTemperatureTick(temp) {
-  if (temp >= 10000) return `${Math.round(temp / 1000)}k`;
-  return String(temp);
-}
-
-function formatAge(years) {
-  const units = state.lang === "zh"
-    ? [["Gyr", 1e9], ["Myr", 1e6], ["kyr", 1e3]]
-    : [["Gyr", 1e9], ["Myr", 1e6], ["kyr", 1e3]];
-  for (const [unit, scale] of units) {
-    if (years >= scale) return `${formatNumber(years / scale, years / scale >= 10 ? 1 : 2)} ${unit}`;
-  }
-  return `${formatNumber(years, 0)} yr`;
-}
-
-function formatNumber(value, decimals = 1) {
-  return new Intl.NumberFormat(state.lang === "zh" ? "zh-CN" : "en-US", {
-    maximumFractionDigits: decimals,
-    minimumFractionDigits: 0
-  }).format(value);
-}
-
-function formatMass(value) {
-  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
-}
-
-function temperatureColor(kelvin) {
-  const t = clamp(kelvin / 100, 10, 400);
-  let r;
-  let g;
-  let b;
-  if (t <= 66) {
-    r = 255;
-    g = 99.47 * Math.log(t) - 161.12;
-    b = t <= 19 ? 0 : 138.52 * Math.log(t - 10) - 305.04;
-  } else {
-    r = 329.7 * Math.pow(t - 60, -0.133);
-    g = 288.12 * Math.pow(t - 60, -0.0755);
-    b = 255;
-  }
-  return `rgb(${clamp(r, 0, 255)}, ${clamp(g, 0, 255)}, ${clamp(b, 0, 255)})`;
-}
-
-function withAlpha(rgb, alpha) {
-  const [r, g, b] = rgb.match(/\d+(\.\d+)?/g).map(Number);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function lighten(rgb, amount) {
-  return shiftColor(rgb, amount);
-}
-
-function darken(rgb, amount) {
-  return shiftColor(rgb, -amount);
-}
-
-function shiftColor(rgb, amount) {
-  const [r, g, b] = rgb.match(/\d+(\.\d+)?/g).map(Number);
-  const shift = (v) => clamp(v + (amount >= 0 ? (255 - v) * amount : v * amount), 0, 255);
-  return `rgb(${shift(r)}, ${shift(g)}, ${shift(b)})`;
-}
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function pseudoRandom(seed) {
-  const x = Math.sin(seed * 0.000001 + 12.9898) * 43758.5453;
-  return x - Math.floor(x);
 }
