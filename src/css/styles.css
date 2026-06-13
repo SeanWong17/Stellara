@@ -39,7 +39,7 @@ input {
 }
 
 .app-shell {
-  width: min(1600px, 100%);
+  width: min(1720px, 100%);
   min-height: 100vh;
   margin: 0 auto;
   padding: 20px;
@@ -118,7 +118,7 @@ input {
 
 .dashboard {
   display: grid;
-  grid-template-columns: minmax(420px, 1.15fr) minmax(440px, 1fr) minmax(300px, 0.55fr);
+  grid-template-columns: minmax(680px, 1fr) minmax(320px, 390px);
   gap: 16px;
   align-items: stretch;
   min-height: calc(100vh - 114px);
@@ -168,8 +168,8 @@ input {
   position: relative;
   display: grid;
   place-items: center;
-  height: min(58vh, 620px);
-  min-height: 360px;
+  height: 230px;
+  min-height: 210px;
   border: 1px solid #282d29;
   border-radius: 8px;
   overflow: hidden;
@@ -227,11 +227,11 @@ input {
 #hrChart {
   display: block;
   width: 100%;
-  height: min(70vh, 720px);
-  min-height: 470px;
+  height: calc(100vh - 212px);
+  min-height: 640px;
   border: 1px solid #282d29;
   border-radius: 8px;
-  background: #111412;
+  background: linear-gradient(180deg, #111412 0%, #111412 72%, #151715 100%);
 }
 
 .axis text {
@@ -254,20 +254,31 @@ input {
   stroke-width: 1;
 }
 
+.spectral-band rect {
+  stroke: rgba(244, 241, 232, 0.1);
+  stroke-width: 1;
+}
+
+.spectral-band text {
+  fill: rgba(244, 241, 232, 0.72);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .track-line {
   fill: none;
-  stroke-width: 1.7;
-  opacity: 0.28;
+  stroke-width: 1.45;
+  opacity: 0.22;
 }
 
 .track-line.active {
-  stroke-width: 3;
+  stroke-width: 2.6;
   opacity: 1;
 }
 
 .current-point {
   stroke: #111412;
-  stroke-width: 3;
+  stroke-width: 2.5;
 }
 
 .axis-label {
@@ -276,21 +287,35 @@ input {
   font-weight: 650;
 }
 
+.reference-point {
+  fill: #f4f1e8;
+  stroke: #111412;
+  stroke-width: 2;
+}
+
+.reference-label {
+  fill: rgba(244, 241, 232, 0.76);
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .control-panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+  max-height: calc(100vh - 114px);
+  overflow: auto;
 }
 
 .mass-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
 .mass-button {
-  min-height: 42px;
-  padding: 0 10px;
+  min-height: 38px;
+  padding: 0 8px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
@@ -304,16 +329,14 @@ input {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
 .metric {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  min-height: 40px;
+  display: grid;
+  gap: 3px;
+  min-height: 54px;
   padding: 10px 12px;
   border: 1px solid #2d332e;
   border-radius: 8px;
@@ -326,7 +349,6 @@ input {
 }
 
 .metric strong {
-  text-align: right;
   font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
 }
@@ -372,15 +394,16 @@ input {
 
 @media (max-width: 1180px) {
   .dashboard {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.56fr);
-  }
-
-  .chart-panel {
-    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   #hrChart {
-    height: 520px;
+    height: 620px;
+    min-height: 520px;
+  }
+
+  .control-panel {
+    max-height: none;
   }
 }
 
@@ -403,8 +426,8 @@ input {
   }
 
   .star-stage {
-    height: 420px;
-    min-height: 320px;
+    height: 220px;
+    min-height: 210px;
   }
 
   .timeline {
@@ -425,8 +448,8 @@ input {
   }
 
   #hrChart {
-    height: 430px;
-    min-height: 430px;
+    height: 520px;
+    min-height: 520px;
   }
 
   .mass-grid {

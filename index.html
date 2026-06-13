@@ -21,24 +21,6 @@
       </header>
 
       <main class="dashboard">
-        <section class="panel star-panel" aria-labelledby="starTitle">
-          <div class="panel-heading">
-            <div>
-              <p class="eyebrow" data-i18n="nowViewing">Now viewing</p>
-              <h2 id="starTitle">1.0 M☉</h2>
-            </div>
-            <span class="stage-pill" id="stagePill">Main sequence</span>
-          </div>
-          <div class="star-stage" id="starStage">
-            <canvas id="starCanvas" width="900" height="620"></canvas>
-          </div>
-          <div class="timeline">
-            <button class="play-button" id="playButton" type="button" aria-label="Play">▶</button>
-            <input id="timeSlider" type="range" min="0" max="1000" value="0">
-            <span id="ageLabel">0 yr</span>
-          </div>
-        </section>
-
         <section class="panel chart-panel" aria-labelledby="chartTitle">
           <div class="panel-heading">
             <div>
@@ -54,6 +36,24 @@
         </section>
 
         <aside class="panel control-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow" data-i18n="nowViewing">Now viewing</p>
+              <h2 id="starTitle">1.0 M☉</h2>
+            </div>
+            <span class="stage-pill" id="stagePill">Main sequence</span>
+          </div>
+
+          <div class="star-stage" id="starStage">
+            <canvas id="starCanvas" width="520" height="260"></canvas>
+          </div>
+
+          <div class="timeline">
+            <button class="play-button" id="playButton" type="button" aria-label="Play">▶</button>
+            <input id="timeSlider" type="range" min="0" max="1000" value="0">
+            <span id="ageLabel">0 yr</span>
+          </div>
+
           <div>
             <p class="eyebrow" data-i18n="initialMass">Initial mass</p>
             <div class="mass-grid" id="massGrid"></div>

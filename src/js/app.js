@@ -289,14 +289,14 @@ function drawChart() {
   if (!state.tracks.length || !svg.clientWidth) return;
   const width = svg.clientWidth;
   const height = svg.clientHeight;
-  const margin = { top: 24, right: 24, bottom: 56, left: 58 };
+  const margin = { top: 48, right: 28, bottom: 62, left: 68 };
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
   const allPoints = state.tracks.flatMap((track) => track.points);
-  const xMin = Math.min(...allPoints.map((p) => p.log_Teff)) - 0.04;
-  const xMax = Math.max(...allPoints.map((p) => p.log_Teff)) + 0.04;
-  const yMin = Math.min(...allPoints.map((p) => p.log_L)) - 0.2;
-  const yMax = Math.max(...allPoints.map((p) => p.log_L)) + 0.2;
+  const xMin = Math.min(3.42, Math.min(...allPoints.map((p) => p.log_Teff)) - 0.03);
+  const xMax = Math.max(4.78, Math.max(...allPoints.map((p) => p.log_Teff)) + 0.03);
+  const yMin = Math.min(-4.2, Math.min(...allPoints.map((p) => p.log_L)) - 0.2);
+  const yMax = Math.max(6.2, Math.max(...allPoints.map((p) => p.log_L)) + 0.2);
   const x = (v) => margin.left + (xMax - v) / (xMax - xMin) * innerW;
   const y = (v) => margin.top + (yMax - v) / (yMax - yMin) * innerH;
   const showAll = el.overlayToggle.checked;
@@ -305,16 +305,20 @@ function drawChart() {
 
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.innerHTML = "";
+  drawSpectralBand(svg, x, margin, width);
 
-  const xTicks = ticks(xMin, xMax, 6);
-  const yTicks = ticks(yMin, yMax, 7);
-  for (const tick of xTicks) {
-    appendLine(svg, x(tick), margin.top, x(tick), height - margin.bottom, "grid-line");
-    appendText(svg, x(tick), height - 30, tick.toFixed(2), "axis text", "middle");
+  const tempTicks = [50000, 30000, 10000, 7500, 6000, 5000, 4000, 3000];
+  const visibleTempTicks = tempTicks
+    .map((temp) => ({ temp, log: Math.log10(temp) }))
+    .filter((tick) => tick.log >= xMin && tick.log <= xMax);
+  const yTicks = integerTicks(Math.ceil(yMin), Math.floor(yMax), 1);
+  for (const tick of visibleTempTicks) {
+    appendLine(svg, x(tick.log), margin.top, x(tick.log), height - margin.bottom, "grid-line");
+    appendText(svg, x(tick.log), height - 31, formatTemperatureTick(tick.temp), "axis text", "middle");
   }
   for (const tick of yTicks) {
     appendLine(svg, margin.left, y(tick), width - margin.right, y(tick), "grid-line");
-    appendText(svg, margin.left - 10, y(tick) + 4, tick.toFixed(1), "axis text", "end");
+    appendText(svg, margin.left - 10, y(tick) + 4, tick.toFixed(0), "axis text", "end");
   }
 
   appendLine(svg, margin.left, height - margin.bottom, width - margin.right, height - margin.bottom, "axis");
@@ -322,6 +326,7 @@ function drawChart() {
   appendText(svg, margin.left + innerW / 2, height - 10, t("xAxis"), "axis-label", "middle");
   const yLabel = appendText(svg, 18, margin.top + innerH / 2, t("yAxis"), "axis-label", "middle");
   yLabel.setAttribute("transform", `rotate(-90 18 ${margin.top + innerH / 2})`);
+  drawReferencePoint(svg, x, y, Math.log10(5772), 0, t("sun"));
 
   state.tracks.forEach((track, index) => {
     if (!showAll && track.slug !== active.slug) return;
@@ -340,6 +345,49 @@ function drawChart() {
   circle.setAttribute("r", 7);
   circle.setAttribute("fill", colors[Math.max(0, activeIndex) % colors.length]);
   svg.appendChild(circle);
+}
+
+function drawSpectralBand(svg, x, margin, width) {
+  const y = 16;
+  const h = 22;
+  const classes = [
+    { label: "O", hot: 5.0, cool: Math.log10(30000), color: "rgba(112,167,255,0.22)" },
+    { label: "B", hot: Math.log10(30000), cool: Math.log10(10000), color: "rgba(148,178,255,0.18)" },
+    { label: "A", hot: Math.log10(10000), cool: Math.log10(7500), color: "rgba(210,220,255,0.16)" },
+    { label: "F", hot: Math.log10(7500), cool: Math.log10(6000), color: "rgba(245,241,210,0.17)" },
+    { label: "G", hot: Math.log10(6000), cool: Math.log10(5200), color: "rgba(245,184,75,0.18)" },
+    { label: "K", hot: Math.log10(5200), cool: Math.log10(3700), color: "rgba(232,126,84,0.18)" },
+    { label: "M", hot: Math.log10(3700), cool: 3.3, color: "rgba(227,108,100,0.18)" }
+  ];
+  const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  group.setAttribute("class", "spectral-band");
+  svg.appendChild(group);
+  appendText(group, margin.left - 8, y + 15, t("spectralClass"), "axis text", "end");
+  classes.forEach((item) => {
+    const x1 = clamp(x(item.hot), margin.left, width - margin.right);
+    const x2 = clamp(x(item.cool), margin.left, width - margin.right);
+    const rectX = Math.min(x1, x2);
+    const rectW = Math.abs(x2 - x1);
+    if (rectW < 4) return;
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", rectX);
+    rect.setAttribute("y", y);
+    rect.setAttribute("width", rectW);
+    rect.setAttribute("height", h);
+    rect.setAttribute("fill", item.color);
+    group.appendChild(rect);
+    appendText(group, rectX + rectW / 2, y + 15, item.label, "spectral-band text", "middle");
+  });
+}
+
+function drawReferencePoint(svg, x, y, logT, logL, label) {
+  const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  circle.setAttribute("class", "reference-point");
+  circle.setAttribute("cx", x(logT));
+  circle.setAttribute("cy", y(logL));
+  circle.setAttribute("r", 4.5);
+  svg.appendChild(circle);
+  appendText(svg, x(logT) + 10, y(logL) + 4, label, "reference-label", "start");
 }
 
 function appendLine(svg, x1, y1, x2, y2, className) {
@@ -366,6 +414,17 @@ function appendText(svg, x, y, text, className, anchor) {
 function ticks(min, max, count) {
   const step = (max - min) / Math.max(1, count - 1);
   return Array.from({ length: count }, (_, i) => min + step * i);
+}
+
+function integerTicks(min, max, step) {
+  const out = [];
+  for (let value = min; value <= max; value += step) out.push(value);
+  return out;
+}
+
+function formatTemperatureTick(temp) {
+  if (temp >= 10000) return `${Math.round(temp / 1000)}k`;
+  return String(temp);
 }
 
 function formatAge(years) {
