@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Stellar Paths | 恒星演化路径</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="src/css/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" data-i18n="eyebrow">MIST v2.5 / single-star tracks</p>
+          <h1 data-i18n="title">恒星演化路径</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button" id="langToggle" type="button" aria-label="Switch language">EN</button>
+          <a class="source-link" href="docs/data-notes.md" data-i18n="dataNotes">数据说明</a>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="panel star-panel" aria-labelledby="starTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow" data-i18n="nowViewing">Now viewing</p>
+              <h2 id="starTitle">1.0 M☉</h2>
+            </div>
+            <span class="stage-pill" id="stagePill">Main sequence</span>
+          </div>
+          <div class="star-stage" id="starStage">
+            <canvas id="starCanvas" width="900" height="620"></canvas>
+          </div>
+          <div class="timeline">
+            <button class="play-button" id="playButton" type="button" aria-label="Play">▶</button>
+            <input id="timeSlider" type="range" min="0" max="1000" value="0">
+            <span id="ageLabel">0 yr</span>
+          </div>
+        </section>
+
+        <section class="panel chart-panel" aria-labelledby="chartTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow" data-i18n="hrDiagram">Hertzsprung-Russell diagram</p>
+              <h2 id="chartTitle" data-i18n="chartTitle">温度与光度轨迹</h2>
+            </div>
+            <label class="toggle">
+              <input id="overlayToggle" type="checkbox" checked>
+              <span data-i18n="overlayTracks">叠加全部轨迹</span>
+            </label>
+          </div>
+          <svg id="hrChart" role="img" aria-labelledby="chartTitle"></svg>
+        </section>
+
+        <aside class="panel control-panel">
+          <div>
+            <p class="eyebrow" data-i18n="initialMass">Initial mass</p>
+            <div class="mass-grid" id="massGrid"></div>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric">
+              <span data-i18n="age">年龄</span>
+              <strong id="metricAge">-</strong>
+            </div>
+            <div class="metric">
+              <span data-i18n="temperature">有效温度</span>
+              <strong id="metricTemp">-</strong>
+            </div>
+            <div class="metric">
+              <span data-i18n="luminosity">光度</span>
+              <strong id="metricLum">-</strong>
+            </div>
+            <div class="metric">
+              <span data-i18n="radius">半径</span>
+              <strong id="metricRadius">-</strong>
+            </div>
+            <div class="metric">
+              <span data-i18n="surfaceGravity">表面重力</span>
+              <strong id="metricLogG">-</strong>
+            </div>
+            <div class="metric">
+              <span data-i18n="remainingMass">当前质量</span>
+              <strong id="metricMass">-</strong>
+            </div>
+          </div>
+
+          <div class="stage-copy">
+            <p class="eyebrow" data-i18n="stage">Stage</p>
+            <h3 id="stageName">-</h3>
+            <p id="stageDescription">-</p>
+          </div>
+
+          <div class="note">
+            <p data-i18n="scienceNote">
+              这是基于 MIST 预计算单星模型的科普可视化，不是实时物理模拟。
+            </p>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <div class="loading" id="loading">Loading MIST tracks...</div>
+    <script src="src/js/i18n.js"></script>
+    <script src="src/js/app.js"></script>
+  </body>
+</html>
