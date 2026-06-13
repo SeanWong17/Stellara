@@ -12,8 +12,12 @@
 </p>
 
 <h3>
-  <a href="https://seanwong17.github.io/Stellara/">在线体验 (Live Demo)</a>
+  <a href="https://seanwong17.github.io/Stellara/">👉 点击进入在线体验 (Live Demo) 👈</a>
 </h3>
+
+<p align="center">
+  <img src="assets/demo.png" alt="Stellara Demo" width="100%">
+</p>
 
 <p>
     <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License">
@@ -63,16 +67,6 @@
 - **中英双语**：一键切换界面语言
 - **响应式设计**：桌面端与移动端自适应
 - **列式 JSON**：数据体积比行式减少 ~50%
-
-## 预览
-
-<p align="center">
-  <img src="assets/demo.png" alt="Stellara Demo" width="100%">
-</p>
-
-<h3>
-  <a href="https://seanwong17.github.io/Stellara/">👉 点击进入在线体验 (Live Demo) 👈</a>
-</h3>
 
 ## 技术栈
 
