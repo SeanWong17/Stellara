@@ -102,10 +102,10 @@ Supports all MIST metallicities ([Fe/H] from −4.00 to +0.50).
 
 ## License
 
-Code: MIT License. MIST data usage must follow the MIST project's citation requirements.
+Code is released under the [MIT License](LICENSE). MIST data usage must follow the MIST project's citation requirements.
 
 ---
 
 <div align="center">
-  <sub>Built by Sean Wong</sub>
+  <sub>Designed with ❤️ by Sean Wong</sub>
 </div>

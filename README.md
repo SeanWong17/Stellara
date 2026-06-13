@@ -66,7 +66,9 @@
 
 ## 预览
 
-> 部署后可在线体验：https://seanwong17.github.io/Stellara/
+<h3>
+  <a href="https://seanwong17.github.io/Stellara/">👉 点击进入在线体验 (Live Demo) 👈</a>
+</h3>
 
 ## 技术栈
 
@@ -151,10 +153,10 @@ python3 scripts/build_mist_subset.py --feh "+0.25" --download
 
 ## 开源协议
 
-代码使用 MIT License。MIST 数据使用请遵循 MIST 项目引用要求。
+本项目代码使用 [MIT License](LICENSE) 开源。MIST 数据使用请遵循 MIST 项目引用要求。
 
 ---
 
 <div align="center">
-  <sub>Built by Sean Wong</sub>
+  <sub>Designed with ❤️ by Sean Wong</sub>
 </div>
