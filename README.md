@@ -66,6 +66,10 @@
 
 ## 预览
 
+<p align="center">
+  <img src="assets/demo.png" alt="Stellara Demo" width="100%">
+</p>
+
 <h3>
   <a href="https://seanwong17.github.io/Stellara/">👉 点击进入在线体验 (Live Demo) 👈</a>
 </h3>

@@ -25,6 +25,10 @@
 
 ---
 
+<p align="center">
+  <img src="assets/demo.png" alt="Stellara Demo" width="100%">
+</p>
+
 ## Overview
 
 **Stellara** is a browser-based interactive visualization of stellar evolution. Built on MIST v2.5 (MESA Isochrones and Stellar Tracks) precomputed data, it renders the complete life cycle of stars across different initial masses and metallicities on the Hertzsprung-Russell diagram.
