@@ -305,6 +305,8 @@ function drawChart() {
 
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   svg.innerHTML = "";
+  appendChartDefs(svg);
+  drawChartRegions(svg, x, y, margin, innerW, innerH, width, height);
 
   const xTicks = ticks(xMin, xMax, 6);
   const yTicks = ticks(yMin, yMax, 7);
@@ -342,6 +344,66 @@ function drawChart() {
   svg.appendChild(circle);
 }
 
+function appendChartDefs(svg) {
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+  gradient.setAttribute("id", "mainSequenceGradient");
+  gradient.setAttribute("x1", "0%");
+  gradient.setAttribute("y1", "0%");
+  gradient.setAttribute("x2", "100%");
+  gradient.setAttribute("y2", "100%");
+  [
+    ["0%", "rgba(112,167,255,0.05)"],
+    ["45%", "rgba(245,184,75,0.22)"],
+    ["100%", "rgba(227,108,100,0.07)"]
+  ].forEach(([offset, color]) => {
+    const stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+    stop.setAttribute("offset", offset);
+    stop.setAttribute("stop-color", color);
+    gradient.appendChild(stop);
+  });
+  defs.appendChild(gradient);
+  svg.appendChild(defs);
+}
+
+function drawChartRegions(svg, x, y, margin, innerW, innerH, width, height) {
+  const mainSequence = [
+    [4.65, 5.2],
+    [4.38, 3.25],
+    [4.02, 1.25],
+    [3.78, 0.2],
+    [3.55, -1.05],
+    [3.43, -1.85],
+    [3.49, -2.25],
+    [3.66, -1.35],
+    [3.9, -0.05],
+    [4.2, 1.65],
+    [4.53, 3.7],
+    [4.8, 5.55]
+  ];
+  const msPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  msPath.setAttribute("class", "chart-region main-sequence-region");
+  msPath.setAttribute("d", mainSequence.map(([tx, ly], i) => `${i ? "L" : "M"}${x(tx).toFixed(1)},${y(ly).toFixed(1)}`).join(" ") + "Z");
+  svg.appendChild(msPath);
+  appendText(svg, x(3.86), y(0.55), t("mainSequenceBand"), "region-label", "middle");
+
+  const wdX1 = x(5.05);
+  const wdX2 = x(4.18);
+  const wdY1 = y(-0.6);
+  const wdY2 = y(-4.2);
+  appendRect(svg, Math.min(wdX1, wdX2), Math.min(wdY1, wdY2), Math.abs(wdX2 - wdX1), Math.abs(wdY2 - wdY1), "chart-region white-dwarf-region", 12);
+  appendText(svg, x(4.55), y(-2.35), t("whiteDwarfRegion"), "region-label", "middle");
+
+  const compactW = Math.min(230, Math.max(150, innerW * 0.36));
+  const compactH = 88;
+  const compactX = margin.left + innerW - compactW - 10;
+  const compactY = margin.top + 12;
+  appendRect(svg, compactX, compactY, compactW, compactH, "chart-region compact-region", 10);
+  appendText(svg, compactX + compactW / 2, compactY + 24, t("neutronStarRegion"), "region-label", "middle");
+  appendText(svg, compactX + compactW / 2, compactY + 45, t("blackHoleRegion"), "region-label", "middle");
+  appendWrappedText(svg, compactX + 12, compactY + 65, t("compactObjectHint"), compactW - 24, "region-note");
+}
+
 function appendLine(svg, x1, y1, x2, y2, className) {
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
   line.setAttribute("x1", x1);
@@ -352,6 +414,18 @@ function appendLine(svg, x1, y1, x2, y2, className) {
   svg.appendChild(line);
 }
 
+function appendRect(svg, x, y, width, height, className, radius = 0) {
+  const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  rect.setAttribute("x", x);
+  rect.setAttribute("y", y);
+  rect.setAttribute("width", Math.max(0, width));
+  rect.setAttribute("height", Math.max(0, height));
+  rect.setAttribute("rx", radius);
+  rect.setAttribute("class", className);
+  svg.appendChild(rect);
+  return rect;
+}
+
 function appendText(svg, x, y, text, className, anchor) {
   const node = document.createElementNS("http://www.w3.org/2000/svg", "text");
   node.setAttribute("x", x);
@@ -359,6 +433,32 @@ function appendText(svg, x, y, text, className, anchor) {
   node.setAttribute("class", className);
   node.setAttribute("text-anchor", anchor);
   node.textContent = text;
+  svg.appendChild(node);
+  return node;
+}
+
+function appendWrappedText(svg, x, y, text, maxWidth, className) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  node.setAttribute("x", x);
+  node.setAttribute("y", y);
+  node.setAttribute("class", className);
+  const limit = Math.max(12, Math.floor(maxWidth / 6));
+  const chunks = [];
+  let rest = text;
+  while (rest.length > limit) {
+    let cut = rest.lastIndexOf(" ", limit);
+    if (cut < limit * 0.45) cut = limit;
+    chunks.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) chunks.push(rest);
+  chunks.slice(0, 2).forEach((line, index) => {
+    const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    tspan.setAttribute("x", x);
+    tspan.setAttribute("dy", index === 0 ? 0 : 13);
+    tspan.textContent = line;
+    node.appendChild(tspan);
+  });
   svg.appendChild(node);
   return node;
 }
