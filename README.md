@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Stellara</h1>
-  <h3>交互式恒星演化可视化 · 从主序到终焉</h3>
+  <h3>恒星演化交互式可视化 · 基于 MIST 轨迹数据</h3>
 
   <p>
     中文 | <a href="README_EN.md">English</a>
@@ -22,7 +22,6 @@
 <p>
     <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License">
     <img src="https://img.shields.io/badge/MIST-v2.5-orange?style=flat-square" alt="MIST">
-    <img src="https://img.shields.io/badge/Vanilla_JS-ES_Modules-yellow?style=flat-square&logo=javascript" alt="JS">
     <img src="https://img.shields.io/badge/Canvas_2D-HR_Diagram-green?style=flat-square" alt="Canvas">
 </p>
 </div>
@@ -31,12 +30,12 @@
 
 ## 简介
 
-**Stellara** 是一个运行于现代浏览器的恒星演化交互式可视化工具。基于 MIST v2.5（MESA Isochrones and Stellar Tracks）预计算轨迹数据，将不同初始质量、不同金属丰度恒星的完整生命历程呈现在赫罗图（HR Diagram）上。
+**Stellara** 是一个面向恒星演化过程的交互式科学可视化项目。它基于 MIST v2.5（MESA Isochrones and Stellar Tracks）预计算轨迹数据，将不同初始质量、不同金属丰度恒星的完整生命历程呈现在赫罗图（HR Diagram）上。
 
-不同于静态教科书插图，Stellara 让你：
-- 亲眼看到一颗太阳质量恒星如何在主序上度过 90% 的生命
-- 对比 0.5 M☉ 红矮星与 40 M☉ 蓝巨星截然不同的演化命运
-- 理解金属丰度如何影响恒星的温度、光度和寿命
+不同于静态教科书插图，Stellara 支持：
+- 追踪太阳质量恒星在主序阶段占据大部分寿命的演化过程
+- 对比 0.5 M☉ 红矮星与 40 M☉ 蓝巨星截然不同的演化路径
+- 探索金属丰度如何影响恒星的温度、光度和寿命
 
 ## 核心特性
 
@@ -44,7 +43,7 @@
 - **Canvas 2D 双层渲染**：静态层绘制坐标轴、轨迹线、光谱带；动态层仅更新当前点，保证动画流畅
 - **光谱分类带**：O / B / A / F / G / K / M 型标注
 - **终态标记**：白矮星（菱形）、核坍缩（星爆）、超新星坍缩虚线
-- **触摸交互**：点击查看数据点 tooltip，双指缩放
+- **交互式检视**：点击查看数据点详情，支持触控缩放
 
 ### 恒星生命周期
 - **动画播放**：从主序前到白矮星/核坍缩的完整演化过程
@@ -61,19 +60,7 @@
 - **三组金属丰度**：[Fe/H] = 0.00（太阳）、−1.00（贫金属）、+0.25（富金属）
 - **七条质量轨迹**：0.5, 1, 2, 5, 10, 20, 40 M☉
 - **Wolf-Rayet 识别**：大质量恒星质量损失 >40% 且高温时自动标记
-
-### 技术特性
-- **零构建依赖**：纯 Vanilla JS ES Modules，无需 bundler
-- **中英双语**：一键切换界面语言
-- **响应式设计**：桌面端与移动端自适应
-- **列式 JSON**：数据体积比行式减少 ~50%
-
-## 技术栈
-
-* **Core**: HTML5, CSS3, JavaScript (ES Modules)
-* **Rendering**: Canvas 2D (HR 图 + 恒星可视化)
-* **Data**: MIST v2.5 precomputed EEP tracks
-* **Font**: Inter (system fallback)
+- **列式轨迹数据**：按字段组织 EEP 序列，降低数据体积并提升加载效率
 
 ## 目录结构
 
@@ -96,13 +83,13 @@ stellara/
 ├── scripts/                # 数据生成工具
 │   └── build_mist_subset.py
 ├── docs/                   # 科学文档
-└── assets/                 # 图标
+└── assets/                 # 图标与演示图
 ```
 
 ## 本地运行
 
 ```bash
-# Clone
+# 克隆仓库
 git clone https://github.com/SeanWong17/Stellara.git
 cd Stellara
 
@@ -112,7 +99,7 @@ python3 -m http.server 8000
 
 访问 http://localhost:8000
 
-> 不要直接打开 `index.html`，浏览器会阻止 `fetch()` 加载本地 JSON。
+> 需要通过本地 HTTP 服务访问；直接打开 `index.html` 时，本地 JSON 请求会被浏览器拦截。
 
 ## 数据再生成
 
@@ -133,7 +120,7 @@ python3 scripts/build_mist_subset.py --feh "+0.25" --download
 
 ## 科学边界
 
-本项目是面向公众理解恒星演化的可视化工具，**不是**实时恒星结构模拟器。
+本项目面向科普展示与概念理解，**不是**实时恒星结构模拟器。
 
 | 包含 | 不包含 |
 |---|---|

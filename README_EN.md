@@ -1,6 +1,6 @@
 <div align="center">
   <h1>Stellara</h1>
-  <h3>Interactive Stellar Evolution Visualizer · From Main Sequence to Final Fate</h3>
+  <h3>Interactive Stellar Evolution Visualization · Powered by MIST Tracks</h3>
 
   <p>
     <a href="README.md">中文</a> | English
@@ -18,7 +18,6 @@
 <p>
     <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License">
     <img src="https://img.shields.io/badge/MIST-v2.5-orange?style=flat-square" alt="MIST">
-    <img src="https://img.shields.io/badge/Vanilla_JS-ES_Modules-yellow?style=flat-square&logo=javascript" alt="JS">
     <img src="https://img.shields.io/badge/Canvas_2D-HR_Diagram-green?style=flat-square" alt="Canvas">
 </p>
 </div>
@@ -31,12 +30,12 @@
 
 ## Overview
 
-**Stellara** is a browser-based interactive visualization of stellar evolution. Built on MIST v2.5 (MESA Isochrones and Stellar Tracks) precomputed data, it renders the complete life cycle of stars across different initial masses and metallicities on the Hertzsprung-Russell diagram.
+**Stellara** is an interactive scientific visualization project for exploring stellar evolution. Built on MIST v2.5 (MESA Isochrones and Stellar Tracks) precomputed data, it renders the complete life cycle of stars across different initial masses and metallicities on the Hertzsprung-Russell diagram.
 
-Unlike static textbook illustrations, Stellara lets you:
-- Watch a solar-mass star spend 90% of its life on the main sequence
-- Compare the vastly different fates of a 0.5 M☉ red dwarf and a 40 M☉ blue giant
-- See how metallicity shapes a star's temperature, luminosity, and lifespan
+Unlike static textbook illustrations, Stellara supports:
+- Tracing how a solar-mass star spends most of its lifetime on the main sequence
+- Comparing the divergent evolutionary paths of a 0.5 M☉ red dwarf and a 40 M☉ blue giant
+- Exploring how metallicity shapes a star's temperature, luminosity, and lifespan
 
 ## Features
 
@@ -44,7 +43,7 @@ Unlike static textbook illustrations, Stellara lets you:
 - **Dual-layer Canvas 2D** — static layer for axes/tracks, dynamic layer for the moving point
 - **Spectral classification bands** — O / B / A / F / G / K / M types
 - **End-state markers** — diamonds (white dwarf), starbursts (core collapse), dashed collapse line
-- **Touch interaction** — tap for tooltip, pinch-to-zoom
+- **Interactive inspection** — tap for data-point details, with touch zoom support
 
 ### Stellar Lifecycle
 - **Animated playback** — from pre-main-sequence to white dwarf or core collapse
@@ -61,12 +60,7 @@ Unlike static textbook illustrations, Stellara lets you:
 - **Three metallicities** — [Fe/H] = 0.00, −1.00, +0.25
 - **Seven mass tracks** — 0.5, 1, 2, 5, 10, 20, 40 M☉
 - **Wolf-Rayet identification** — triggered when mass loss exceeds 40% at high temperature
-
-### Technical
-- **Zero build dependencies** — vanilla ES Modules, no bundler
-- **Bilingual** — Chinese / English toggle
-- **Responsive** — desktop and mobile
-- **Columnar JSON** — ~50% smaller than row-based format
+- **Columnar track data** — EEP sequences are organized by field to reduce payload size and improve loading efficiency
 
 ## Quick Start
 
@@ -77,6 +71,32 @@ python3 -m http.server 8000
 ```
 
 Open http://localhost:8000
+
+> Use a local HTTP server; opening `index.html` directly will block local JSON requests in the browser.
+
+## Project Structure
+
+```text
+stellara/
+├── index.html              # Entry point
+├── src/js/
+│   ├── app.js              # Initialization and event orchestration
+│   ├── state.js            # Shared state and derived calculations
+│   ├── utils.js            # Math, formatting, interpolation
+│   ├── hr-chart.js         # Canvas HR diagram
+│   ├── star-renderer.js    # Canvas star visualization
+│   ├── animation.js        # Playback engine
+│   └── i18n.js             # Bilingual UI text
+├── src/css/styles.css      # Styles
+├── data/tracks/            # MIST track subset in columnar JSON
+│   ├── feh_p000/           # Solar metallicity
+│   ├── feh_m100/           # Metal-poor
+│   └── feh_p025/           # Metal-rich
+├── scripts/                # Data generation tools
+│   └── build_mist_subset.py
+├── docs/                   # Scientific notes
+└── assets/                 # Icons and demo image
+```
 
 ## Data Regeneration
 
@@ -89,6 +109,8 @@ python3 scripts/build_mist_subset.py --feh "+0.25" --download
 Supports all MIST metallicities ([Fe/H] from −4.00 to +0.50).
 
 ## Scientific Scope
+
+Stellara is intended for public-facing exploration and conceptual understanding. It is **not** a live stellar-structure simulator.
 
 | Included | Not Included |
 |---|---|
