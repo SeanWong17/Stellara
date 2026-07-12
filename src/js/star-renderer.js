@@ -1,13 +1,11 @@
 import { clamp, pseudoRandom, temperatureColor, withAlpha, lighten, darken, formatNumber } from "./utils.js";
 
 let canvas, ctx;
-let flashAlpha = 0;
 
 export function initStarCanvas(canvasEl) {
   canvas = canvasEl;
   ctx = canvas.getContext("2d");
   resizeCanvas();
-  window.addEventListener("resize", resizeCanvas);
 }
 
 export function resizeCanvas() {
@@ -18,7 +16,7 @@ export function resizeCanvas() {
   canvas.height = Math.max(1, Math.floor(rect.height * ratio));
 }
 
-export function drawStar(point, trackType) {
+export function drawStar(point, { trackType, isTerminal = false, lang = "zh", collapseLabel = "" } = {}) {
   if (!point || !ctx) return;
   const width = canvas.width;
   const height = canvas.height;
@@ -32,25 +30,15 @@ export function drawStar(point, trackType) {
   ctx.clearRect(0, 0, width, height);
   drawStarscape(width, height, point.age_yr);
 
-  const isEndState = point.eep >= 360;
-  if (isEndState && trackType === "low-mass") {
+  if (point.stage === "white_dwarf") {
     drawWhiteDwarf(cx, cy, ratio, temp);
-  } else if (isEndState && trackType === "high-mass") {
-    drawCoreCollapse(cx, cy, ratio, point, width, height);
+  } else if (isTerminal && trackType === "high-mass") {
+    drawCoreCollapse(cx, cy, ratio, point, height, collapseLabel);
   } else {
     drawNormalStar(cx, cy, width, height, ratio, radiusSolar, temp, lum, point);
   }
 
-  drawScale(width, height, radiusSolar, ratio);
-  if (flashAlpha > 0) {
-    ctx.fillStyle = `rgba(255,255,255,${flashAlpha})`;
-    ctx.fillRect(0, 0, width, height);
-    flashAlpha -= 0.02;
-  }
-}
-
-export function triggerFlash() {
-  flashAlpha = 0.3;
+  drawScale(height, radiusSolar, ratio, lang);
 }
 
 function drawNormalStar(cx, cy, width, height, ratio, radiusSolar, temp, lum, point) {
@@ -101,7 +89,7 @@ function drawWhiteDwarf(cx, cy, ratio, temp) {
   ctx.fill();
 }
 
-function drawCoreCollapse(cx, cy, ratio, point, width, height) {
+function drawCoreCollapse(cx, cy, ratio, point, height, label) {
   const phase = (point.eep % 20) / 20;
 
   // Expanding supernova shell
@@ -128,11 +116,12 @@ function drawCoreCollapse(cx, cy, ratio, point, width, height) {
   ctx.arc(cx, cy, coreR, 0, Math.PI * 2);
   ctx.fill();
 
-  // Label hint
-  ctx.fillStyle = "rgba(244,241,232,0.5)";
-  ctx.font = `${11 * ratio}px Inter, sans-serif`;
-  ctx.textAlign = "center";
-  ctx.fillText("→ Core collapse / SN", cx, height - 18 * ratio);
+  if (label) {
+    ctx.fillStyle = "rgba(244,241,232,0.65)";
+    ctx.font = `${11 * ratio}px Inter, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(label, cx, height - 18 * ratio);
+  }
 }
 
 function drawStarscape(width, height, seed) {
@@ -167,9 +156,9 @@ function drawSurfaceBands(cx, cy, radius, color, point) {
   ctx.restore();
 }
 
-function drawScale(width, height, radiusSolar, ratio) {
+function drawScale(height, radiusSolar, ratio, lang) {
   ctx.fillStyle = "rgba(244,241,232,0.78)";
   ctx.font = `${13 * ratio}px Inter, sans-serif`;
   ctx.textAlign = "left";
-  ctx.fillText(`${formatNumber(radiusSolar, 2)} R☉`, 18 * ratio, height - 24 * ratio);
+  ctx.fillText(`${formatNumber(radiusSolar, 2, lang)} R☉`, 18 * ratio, height - 24 * ratio);
 }

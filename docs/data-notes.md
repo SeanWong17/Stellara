@@ -57,6 +57,8 @@ Each metallicity dataset includes:
 
 Tracks are downsampled to ~360 points while preserving primary EEP markers.
 
+The current 0.5 M☉ subset ends in the subgiant/red-giant stage rather than a white dwarf cooling sequence. End-state markers are only shown when the underlying track reaches the corresponding stage.
+
 ## Limitations
 
 - Single-star models only (no binaries, mergers, or mass transfer)

@@ -5,10 +5,13 @@ import { COLORS } from "./state.js";
 let container, staticCanvas, dynamicCanvas, tooltipEl;
 let staticCtx, dynamicCtx;
 let width = 0, height = 0;
-const margin = { top: 48, right: 28, bottom: 62, left: 68 };
-let pointers = new Map();
+const cssMargin = { top: 48, right: 28, bottom: 62, left: 68 };
+let margin = { ...cssMargin };
+let pixelRatio = 1;
+const pointers = new Map();
 let pinchStartDist = 0;
 let pinchStartTransform = null;
+let didPinch = false;
 
 export function initHRChart(containerEl) {
   container = containerEl;
@@ -34,15 +37,17 @@ export function initHRChart(containerEl) {
   dynamicCtx = dynamicCanvas.getContext("2d");
 
   resize();
-  window.addEventListener("resize", () => { resize(); drawStatic(); });
   bindTouch();
 }
 
 export function resize() {
   const rect = container.getBoundingClientRect();
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  width = Math.floor(rect.width * dpr);
-  height = Math.floor(rect.height * dpr);
+  pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  width = Math.max(1, Math.floor(rect.width * pixelRatio));
+  height = Math.max(1, Math.floor(rect.height * pixelRatio));
+  margin = Object.fromEntries(
+    Object.entries(cssMargin).map(([side, value]) => [side, value * pixelRatio])
+  );
   for (const c of [staticCanvas, dynamicCanvas]) {
     c.width = width;
     c.height = height;
@@ -68,7 +73,7 @@ function yScale(logL) {
 export function drawStatic() {
   if (!state.axisRange || !width) return;
   const ctx = staticCtx;
-  const dpr = width / container.getBoundingClientRect().width;
+  const dpr = pixelRatio;
   ctx.clearRect(0, 0, width, height);
   ctx.save();
 
@@ -85,7 +90,7 @@ export function drawStatic() {
 export function drawDynamic() {
   if (!state.axisRange || !width) return;
   const ctx = dynamicCtx;
-  const dpr = width / container.getBoundingClientRect().width;
+  const dpr = pixelRatio;
   ctx.clearRect(0, 0, width, height);
 
   const track = activeTrack();
@@ -122,31 +127,34 @@ function drawSpectralBands(ctx, dpr) {
   ctx.font = `${12 * dpr}px Inter, sans-serif`;
   ctx.textAlign = "end";
   ctx.fillStyle = "rgba(244,241,232,0.72)";
-  ctx.fillText(t("spectralClass"), margin.left - 8 * dpr, bandY + 15 * dpr);
+  if (width / pixelRatio >= 500) {
+    ctx.fillText(t("spectralClass"), margin.left - 8 * dpr, bandY + 15 * dpr);
+  }
 
   for (const item of classes) {
     const x1 = clamp(xScale(item.hot), margin.left, width - margin.right);
     const x2 = clamp(xScale(item.cool), margin.left, width - margin.right);
     const rx = Math.min(x1, x2);
     const rw = Math.abs(x2 - x1);
-    if (rw < 4) continue;
+    if (rw < 4 * dpr) continue;
     ctx.fillStyle = item.color;
     ctx.fillRect(rx, bandY, rw, bandH);
     ctx.strokeStyle = "rgba(244,241,232,0.1)";
     ctx.lineWidth = 1;
     ctx.strokeRect(rx, bandY, rw, bandH);
-    ctx.fillStyle = "rgba(244,241,232,0.72)";
-    ctx.font = `bold ${12 * dpr}px Inter, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.fillText(item.label, rx + rw / 2, bandY + 15 * dpr);
+    const minimumLabelWidth = (width / pixelRatio < 500 ? 22 : 14) * dpr;
+    if (rw >= minimumLabelWidth) {
+      ctx.fillStyle = "rgba(244,241,232,0.72)";
+      ctx.font = `bold ${12 * dpr}px Inter, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText(item.label, rx + rw / 2, bandY + 15 * dpr);
+    }
   }
 }
 
 function drawGrid(ctx, dpr) {
-  const { xMin, xMax, yMin, yMax } = state.axisRange;
-  const tempTicks = [50000, 30000, 10000, 7500, 6000, 5000, 4000, 3000]
-    .map((temp) => ({ temp, log: Math.log10(temp) }))
-    .filter((tick) => tick.log >= xMin && tick.log <= xMax);
+  const { yMin, yMax } = state.axisRange;
+  const tempTicks = getTemperatureTicks(dpr).map((temp) => ({ temp, log: Math.log10(temp) }));
 
   ctx.strokeStyle = "rgba(244,241,232,0.11)";
   ctx.lineWidth = 1;
@@ -164,7 +172,7 @@ function drawGrid(ctx, dpr) {
 }
 
 function drawAxes(ctx, dpr) {
-  const { xMin, xMax, yMin, yMax } = state.axisRange;
+  const { yMin, yMax } = state.axisRange;
   ctx.strokeStyle = "#5a6259";
   ctx.lineWidth = 1.2 * dpr;
   ctx.beginPath();
@@ -178,8 +186,7 @@ function drawAxes(ctx, dpr) {
 
   ctx.fillStyle = "rgba(167,170,164,1)";
   ctx.font = `${12 * dpr}px Inter, sans-serif`;
-  const tempTicks = [50000, 30000, 10000, 7500, 6000, 5000, 4000, 3000]
-    .filter((temp) => Math.log10(temp) >= xMin && Math.log10(temp) <= xMax);
+  const tempTicks = getTemperatureTicks(dpr);
   ctx.textAlign = "center";
   for (const temp of tempTicks) {
     ctx.fillText(formatTemperatureTick(temp), xScale(Math.log10(temp)), height - 31 * dpr);
@@ -194,12 +201,30 @@ function drawAxes(ctx, dpr) {
   ctx.textAlign = "center";
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
-  ctx.fillText(t("xAxis"), margin.left + innerW / 2, height - 10 * dpr);
+  const xAxisKey = width / pixelRatio < 500 ? "xAxisShort" : "xAxis";
+  ctx.fillText(t(xAxisKey), margin.left + innerW / 2, height - 10 * dpr);
   ctx.save();
   ctx.translate(18 * dpr, margin.top + innerH / 2);
   ctx.rotate(-Math.PI / 2);
   ctx.fillText(t("yAxis"), 0, 0);
   ctx.restore();
+}
+
+function getTemperatureTicks(dpr) {
+  const { xMin, xMax } = state.axisRange;
+  const minimumGap = (width / pixelRatio < 500 ? 46 : 28) * dpr;
+  const ticks = [];
+  let lastX = -Infinity;
+
+  for (const temp of [50000, 30000, 10000, 7500, 6000, 5000, 4000, 3000]) {
+    const log = Math.log10(temp);
+    if (log < xMin || log > xMax) continue;
+    const x = xScale(log);
+    if (x < margin.left || x > width - margin.right || x - lastX < minimumGap) continue;
+    ticks.push(temp);
+    lastX = x;
+  }
+  return ticks;
 }
 
 function drawTracks(ctx, dpr) {
@@ -271,14 +296,14 @@ function drawEndStateMarkers(ctx, dpr) {
     ctx.fillStyle = color;
     ctx.strokeStyle = "#111412";
     ctx.lineWidth = 1.5 * dpr;
-    if (track.track_type === "low-mass") {
+    if (last.stage === "white_dwarf") {
       const s = 5 * dpr;
       ctx.beginPath();
       ctx.moveTo(px, py - s); ctx.lineTo(px + s, py);
       ctx.lineTo(px, py + s); ctx.lineTo(px - s, py);
       ctx.closePath();
       ctx.fill(); ctx.stroke();
-    } else {
+    } else if (track.track_type === "high-mass") {
       const s = 6 * dpr;
       const spikes = 6;
       ctx.beginPath();
@@ -294,6 +319,13 @@ function drawEndStateMarkers(ctx, dpr) {
   });
 }
 
+export function resetView() {
+  state.viewTransform = { scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 };
+  tooltipEl?.classList.add("hidden");
+  drawStatic();
+  drawDynamic();
+}
+
 function bindTouch() {
   staticCanvas.addEventListener("pointerdown", onPointerDown);
   staticCanvas.addEventListener("pointermove", onPointerMove);
@@ -302,6 +334,8 @@ function bindTouch() {
 }
 
 function onPointerDown(e) {
+  staticCanvas.setPointerCapture(e.pointerId);
+  if (pointers.size === 0) didPinch = false;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 2) {
     const pts = [...pointers.values()];
@@ -316,9 +350,10 @@ function onPointerMove(e) {
   if (pointers.size === 2 && pinchStartTransform) {
     const pts = [...pointers.values()];
     const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-    const scale = clamp(dist / pinchStartDist, 0.5, 4);
-    state.viewTransform.scaleX = pinchStartTransform.scaleX * scale;
-    state.viewTransform.scaleY = pinchStartTransform.scaleY * scale;
+    const scale = clamp(pinchStartTransform.scaleX * (dist / pinchStartDist), 0.5, 4);
+    didPinch = true;
+    state.viewTransform.scaleX = scale;
+    state.viewTransform.scaleY = scale;
     drawStatic();
     drawDynamic();
   }
@@ -326,15 +361,17 @@ function onPointerMove(e) {
 
 function onPointerUp(e) {
   pointers.delete(e.pointerId);
+  if (staticCanvas.hasPointerCapture(e.pointerId)) staticCanvas.releasePointerCapture(e.pointerId);
   if (pointers.size < 2) pinchStartTransform = null;
-  if (pointers.size === 0 && !pinchStartTransform) {
+  if (pointers.size === 0 && !didPinch) {
     showTooltipAt(e.clientX, e.clientY);
   }
+  if (pointers.size === 0) didPinch = false;
 }
 
 function showTooltipAt(clientX, clientY) {
   const rect = container.getBoundingClientRect();
-  const dpr = width / rect.width;
+  const dpr = pixelRatio;
   const px = (clientX - rect.left) * dpr;
   const py = (clientY - rect.top) * dpr;
   let best = null, bestDist = 20 * dpr;
@@ -352,17 +389,20 @@ function showTooltipAt(clientX, clientY) {
   if (best) {
     const temp = Math.pow(10, best.log_Teff);
     const lum = Math.pow(10, best.log_L);
-    tooltipEl.innerHTML = `<strong>${formatNumber(temp, 0, state.lang)} K</strong><br>` +
-      `L = ${formatNumber(lum, 2, state.lang)} L☉<br>` +
-      `Age: ${formatNumber(best.age_yr / 1e6, 1, state.lang)} Myr`;
-    tooltipEl.style.left = `${clientX - rect.left + 12}px`;
-    tooltipEl.style.top = `${clientY - rect.top - 10}px`;
+    tooltipEl.replaceChildren();
+    const heading = document.createElement("strong");
+    heading.textContent = `${formatNumber(temp, 0, state.lang)} K`;
+    tooltipEl.append(heading, document.createElement("br"));
+    tooltipEl.append(`L = ${formatNumber(lum, 2, state.lang)} L☉`, document.createElement("br"));
+    tooltipEl.append(`${t("age")}: ${formatNumber(best.age_yr / 1e6, 1, state.lang)} Myr`);
     tooltipEl.classList.remove("hidden");
+    const left = clamp(clientX - rect.left + 12, 8, rect.width - tooltipEl.offsetWidth - 8);
+    const top = clamp(clientY - rect.top - 10, 8, rect.height - tooltipEl.offsetHeight - 8);
+    tooltipEl.style.left = `${left}px`;
+    tooltipEl.style.top = `${top}px`;
     clearTimeout(tooltipEl._timer);
     tooltipEl._timer = setTimeout(() => tooltipEl.classList.add("hidden"), 3000);
   } else {
     tooltipEl.classList.add("hidden");
   }
 }
-
-

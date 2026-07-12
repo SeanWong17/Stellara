@@ -30,7 +30,7 @@
 
 ## Overview
 
-**Stellara** is an interactive scientific visualization project for exploring stellar evolution. Built on MIST v2.5 (MESA Isochrones and Stellar Tracks) precomputed data, it renders the complete life cycle of stars across different initial masses and metallicities on the Hertzsprung-Russell diagram.
+**Stellara** is an interactive scientific visualization project for exploring stellar evolution. Built on precomputed MIST v2.5 (MESA Isochrones and Stellar Tracks) data, it renders stars from the pre-main sequence to each track's available data endpoint on the Hertzsprung-Russell diagram.
 
 Unlike static textbook illustrations, Stellara supports:
 - Tracing how a solar-mass star spends most of its lifetime on the main sequence
@@ -46,10 +46,10 @@ Unlike static textbook illustrations, Stellara supports:
 - **Interactive inspection** — tap for data-point details, with touch zoom support
 
 ### Stellar Lifecycle
-- **Animated playback** — from pre-main-sequence to white dwarf or core collapse
+- **Animated playback** — from pre-main-sequence to the current MIST track endpoint
 - **Physical time mode** — slider maps to real stellar age, revealing time-scale contrasts
 - **Stage detection** — PMS, main sequence, subgiant/RGB, helium burning, TP-AGB, Wolf-Rayet, etc.
-- **Transition feedback** — UI pulse + canvas flash on phase change
+- **Transition feedback** — stage label and stellar-view border pulse on phase change
 
 ### Star Visualization
 - **Real-time rendering** — color, radius, and glow respond to temperature and luminosity
@@ -114,11 +114,13 @@ Stellara is intended for public-facing exploration and conceptual understanding.
 
 | Included | Not Included |
 |---|---|
-| Single-star PMS through terminal stages | Binary interactions |
-| Low-mass → white dwarf cooling | Magnetic fields |
+| Single-star PMS through each track's data endpoint | Binary interactions |
+| White dwarf cooling in the 1–5 M☉ tracks | Magnetic fields |
 | High-mass → carbon burning (model endpoint) | Actual supernova light curves |
 | Wolf-Rayet phase identification | Arbitrary rotation |
 | Schematic collapse line on HR diagram | Live MESA computation |
+
+> The current 0.5 M☉ subset ends in the subgiant/red-giant stage and does not extend to white dwarf cooling. High-mass tracks end at their pre-collapse model endpoint; the collapse line and supernova appearance are schematic.
 
 ## References
 

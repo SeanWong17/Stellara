@@ -7,6 +7,8 @@ export function setTickCallback(fn) {
 }
 
 export function startPlayback() {
+  if (!activeTrack()) return;
+  if (state.progress >= 1) state.progress = 0;
   state.playing = true;
   state.lastFrame = performance.now();
   tick(state.lastFrame);

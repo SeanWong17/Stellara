@@ -1,9 +1,10 @@
 import { clamp, interpolatePoint, interpolateByAge } from "./utils.js";
 
 export const COLORS = ["#f5b84b", "#77c7b8", "#e36c64", "#a6a1ff", "#8fd16f", "#f08bc3", "#70a7ff"];
+const storedLanguage = localStorage.getItem("stellar-lang");
 
 export const state = {
-  lang: localStorage.getItem("stellar-lang") || "zh",
+  lang: storedLanguage === "en" ? "en" : "zh",
   manifest: null,
   tracks: [],
   activeSlug: null,
@@ -15,7 +16,6 @@ export const state = {
   metallicity: "feh_p000",
   overlayAll: true,
   prevStage: null,
-  stageJustChanged: false,
   axisRange: null,
   viewTransform: { scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }
 };
@@ -42,6 +42,7 @@ export function currentPoint(track = activeTrack()) {
 
 export function computeAxisRange(tracks) {
   const allPoints = tracks.flatMap((t) => t.points);
+  if (allPoints.length === 0) throw new Error("Cannot compute an axis range without track points");
   state.axisRange = {
     xMin: Math.min(3.42, Math.min(...allPoints.map((p) => p.log_Teff)) - 0.03),
     xMax: Math.max(4.78, Math.max(...allPoints.map((p) => p.log_Teff)) + 0.03),

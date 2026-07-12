@@ -17,6 +17,7 @@ window.STELLAR_I18N = {
     stage: "演化阶段",
     scienceNote: "这是基于 MIST 预计算单星模型的科普可视化，不是实时物理模拟；双星相互作用、磁场和任意参数调节不在第一版范围内。",
     xAxis: "有效温度 Teff [K]，高温在左",
+    xAxisShort: "Teff [K] · 左侧更热",
     yAxis: "log L / L☉",
     spectralClass: "光谱型",
     sun: "太阳",
@@ -26,6 +27,11 @@ window.STELLAR_I18N = {
     pause: "暂停",
     realTimeMode: "按物理时间",
     metallicity: "金属丰度",
+    resetView: "重置图表视图",
+    chartAria: "恒星演化赫罗图。点击轨迹查看数据点，双指缩放。",
+    starAria: "当前恒星的外观示意图",
+    timeSlider: "恒星演化时间",
+    coreCollapseHint: "模型终点 → 核心坍缩 / 超新星",
     stages: {
       pms: {
         name: "主序前",
@@ -95,6 +101,7 @@ window.STELLAR_I18N = {
     stage: "Evolutionary stage",
     scienceNote: "This is a public-facing visualization based on precomputed MIST single-star models, not a live physics simulation. Binaries, magnetic fields, and arbitrary parameter controls are outside v1.",
     xAxis: "Effective temperature Teff [K], hotter to the left",
+    xAxisShort: "Teff [K] · hotter to the left",
     yAxis: "log L / L☉",
     spectralClass: "Spectral class",
     sun: "Sun",
@@ -104,6 +111,11 @@ window.STELLAR_I18N = {
     pause: "Pause",
     realTimeMode: "Physical time",
     metallicity: "Metallicity",
+    resetView: "Reset chart view",
+    chartAria: "Stellar evolution H-R diagram. Select a track point for details or pinch to zoom.",
+    starAria: "Illustration of the current star",
+    timeSlider: "Stellar evolution time",
+    coreCollapseHint: "Model endpoint → core collapse / supernova",
     stages: {
       pms: {
         name: "Pre-main sequence",

@@ -3,18 +3,21 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Stellar Paths | 恒星演化路径</title>
+    <meta name="description" content="Explore single-star evolution across mass and metallicity with interactive MIST tracks.">
+    <title>Stellara | 恒星演化交互式可视化</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="src/css/styles.css">
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div>
+        <div class="brand-block">
           <p class="eyebrow" data-i18n="eyebrow">MIST v2.5 / 单星轨迹</p>
-          <h1 data-i18n="title">恒星演化路径</h1>
+          <h1>Stellara</h1>
+          <p class="product-subtitle" data-i18n="title">恒星演化路径</p>
         </div>
         <div class="topbar-actions">
+          <label class="visually-hidden" for="fehSelect" data-i18n="metallicity">金属丰度</label>
           <select class="feh-select" id="fehSelect">
             <option value="feh_p000">[Fe/H] = 0.00</option>
             <option value="feh_m100">[Fe/H] = −1.00</option>
@@ -25,7 +28,7 @@
         </div>
       </header>
 
-      <main class="dashboard">
+      <main class="dashboard" id="dashboard">
         <section class="panel chart-panel" aria-labelledby="chartTitle">
           <div class="panel-heading">
             <div>
@@ -41,9 +44,10 @@
                 <input id="realTimeToggle" type="checkbox">
                 <span data-i18n="realTimeMode">按物理时间</span>
               </label>
+              <button class="icon-button chart-reset" id="resetViewButton" type="button" aria-label="重置图表视图" data-i18n-aria="resetView" title="Reset view">↺</button>
             </div>
           </div>
-          <div class="hr-chart-container" id="hrChartContainer"></div>
+          <div class="hr-chart-container" id="hrChartContainer" role="img" data-i18n-aria="chartAria"></div>
         </section>
 
         <aside class="panel control-panel">
@@ -52,22 +56,22 @@
               <p class="eyebrow" data-i18n="nowViewing">当前恒星</p>
               <h2 id="starTitle">1.0 M☉</h2>
             </div>
-            <span class="stage-pill" id="stagePill">Main sequence</span>
+            <span class="stage-pill" id="stagePill" aria-live="polite">Main sequence</span>
           </div>
 
           <div class="star-stage" id="starStage">
-            <canvas id="starCanvas" width="520" height="260"></canvas>
+            <canvas id="starCanvas" width="520" height="260" role="img" data-i18n-aria="starAria"></canvas>
           </div>
 
           <div class="timeline">
             <button class="play-button" id="playButton" type="button" aria-label="Play">▶</button>
-            <input id="timeSlider" type="range" min="0" max="1000" value="0">
+            <input id="timeSlider" type="range" min="0" max="1000" value="0" data-i18n-aria="timeSlider">
             <span id="ageLabel">0 yr</span>
           </div>
 
           <div>
             <p class="eyebrow" data-i18n="initialMass">初始质量</p>
-            <div class="mass-grid" id="massGrid"></div>
+            <div class="mass-grid" id="massGrid" role="group" data-i18n-aria="initialMass"></div>
           </div>
 
           <div class="metric-grid">
@@ -94,7 +98,7 @@
       </main>
     </div>
 
-    <div class="loading" id="loading">Loading MIST tracks...</div>
+    <div class="loading" id="loading" role="status" aria-live="polite">Loading MIST tracks...</div>
     <script src="src/js/i18n.js"></script>
     <script type="module" src="src/js/app.js"></script>
   </body>

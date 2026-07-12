@@ -85,14 +85,42 @@ export function formatTemperatureTick(temp) {
 }
 
 export function deserializeTrack(raw) {
-  if (raw.points) return raw;
-  const { columns, data, ...meta } = raw;
-  const points = data.map((row) => {
-    const point = {};
-    for (let i = 0; i < columns.length; i++) point[columns[i]] = row[i];
-    return point;
+  if (!raw || typeof raw !== "object") throw new TypeError("Track data must be an object");
+  const requiredNumbers = [
+    "eep", "age_yr", "mass", "log_L", "log_Teff", "log_R", "log_g",
+    "center_h1", "center_he4", "mist_phase"
+  ];
+  let track;
+  if (Array.isArray(raw.points)) {
+    track = { ...raw, points: raw.points };
+  } else {
+    const { columns, data, ...meta } = raw;
+    if (!Array.isArray(columns) || !Array.isArray(data) || data.length === 0) {
+      throw new TypeError("Track data requires non-empty columns and data arrays");
+    }
+    const missing = [...requiredNumbers, "stage"].filter((key) => !columns.includes(key));
+    if (missing.length) throw new TypeError(`Track data is missing columns: ${missing.join(", ")}`);
+    const points = data.map((row) => {
+      if (!Array.isArray(row) || row.length !== columns.length) {
+        throw new TypeError("Track row length does not match its columns");
+      }
+      return Object.fromEntries(columns.map((column, index) => [column, row[index]]));
+    });
+    track = { ...meta, points };
+  }
+
+  if (track.points.length === 0) throw new TypeError("Track contains no points");
+  track.points.forEach((point, index) => {
+    for (const key of requiredNumbers) {
+      if (!Number.isFinite(point[key])) throw new TypeError(`Track point ${index} has invalid ${key}`);
+    }
+    if (typeof point.stage !== "string") throw new TypeError(`Track point ${index} has invalid stage`);
+    if (index > 0 && point.age_yr < track.points[index - 1].age_yr) {
+      throw new TypeError(`Track ages are not sorted at point ${index}`);
+    }
   });
-  const track = { ...meta, points };
+
+  const points = track.points;
   track.minAge = points[0].age_yr;
   track.maxAge = points[points.length - 1].age_yr;
   return track;
